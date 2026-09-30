@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:name="food_path"
+        android:pathData="M 50.00,27.00 C 55.50,27.00 61.16,24.00 66.50,25.42 C 71.84,26.84 78.79,30.74 82.04,35.50 C 85.29,40.26 86.43,48.08 86.00,54.00 C 85.57,59.92 82.69,66.24 79.44,71.00 C 76.19,75.76 71.41,79.41 66.50,82.58 C 61.59,85.75 55.50,90.00 50.00,90.00 C 44.50,90.00 38.41,85.75 33.50,82.58 C 28.59,79.41 23.81,75.76 20.56,71.00 C 17.31,66.24 14.43,59.92 14.00,54.00 C 13.57,48.08 14.71,40.26 17.96,35.50 C 21.21,30.74 28.16,26.84 33.50,25.42 C 38.84,24.00 44.50,27.00 50.00,27.00 Z"
+        android:fillColor="#3fb84f"/>
+</vector>

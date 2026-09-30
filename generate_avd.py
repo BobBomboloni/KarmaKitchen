@@ -1,0 +1,64 @@
+apple_path = "M 50.00,27.00 C 55.50,27.00 61.16,24.00 66.50,25.42 C 71.84,26.84 78.79,30.74 82.04,35.50 C 85.29,40.26 86.43,48.08 86.00,54.00 C 85.57,59.92 82.69,66.24 79.44,71.00 C 76.19,75.76 71.41,79.41 66.50,82.58 C 61.59,85.75 55.50,90.00 50.00,90.00 C 44.50,90.00 38.41,85.75 33.50,82.58 C 28.59,79.41 23.81,75.76 20.56,71.00 C 17.31,66.24 14.43,59.92 14.00,54.00 C 13.57,48.08 14.71,40.26 17.96,35.50 C 21.21,30.74 28.16,26.84 33.50,25.42 C 38.84,24.00 44.50,27.00 50.00,27.00 Z"
+banana_path = "M 40.45,76.55 C 38.83,75.69 38.89,69.48 39.00,65.94 C 39.10,62.41 39.73,58.56 41.09,55.35 C 42.46,52.14 44.62,48.97 47.18,46.67 C 49.74,44.36 53.12,42.54 56.46,41.52 C 59.79,40.50 63.68,40.28 67.21,40.54 C 70.73,40.80 76.92,41.39 77.60,43.09 C 78.29,44.79 73.17,48.31 71.33,50.74 C 69.49,53.17 68.12,55.63 66.55,57.68 C 64.98,59.72 63.64,61.45 61.90,63.02 C 60.16,64.58 58.31,65.73 56.11,67.08 C 53.91,68.43 51.32,69.53 48.71,71.11 C 46.10,72.69 42.07,77.41 40.45,76.55 Z"
+bread_path = "M 41.00,15.00 C 45.50,13.17 47.00,12.00 50.00,12.00 C 53.00,12.00 54.50,13.17 59.00,15.00 C 63.50,16.83 72.83,17.17 77.00,23.00 C 81.17,28.83 84.00,41.00 84.00,50.00 C 84.00,59.00 80.83,71.17 77.00,77.00 C 73.17,82.83 65.50,83.33 61.00,85.00 C 56.50,86.67 53.67,87.00 50.00,87.00 C 46.33,87.00 43.50,86.67 39.00,85.00 C 34.50,83.33 26.83,82.83 23.00,77.00 C 19.17,71.17 16.00,59.00 16.00,50.00 C 16.00,41.00 18.83,28.83 23.00,23.00 C 27.17,17.17 36.50,16.83 41.00,15.00 Z"
+carrot_path = "M 50.00,17.00 C 54.17,17.00 59.17,17.33 63.00,19.00 C 66.83,20.67 72.17,23.33 73.00,27.00 C 73.83,30.67 70.17,36.33 68.00,41.00 C 65.83,45.67 62.33,50.33 60.00,55.00 C 57.67,59.67 55.67,63.33 54.00,69.00 C 52.33,74.67 51.50,89.00 50.00,89.00 C 48.50,89.00 46.83,74.67 45.00,69.00 C 43.17,63.33 41.17,59.67 39.00,55.00 C 36.83,50.33 33.83,45.67 32.00,41.00 C 30.17,36.33 27.00,30.67 28.00,27.00 C 29.00,23.33 34.33,20.67 38.00,19.00 C 41.67,17.33 45.83,17.00 50.00,17.00 Z"
+
+xml = f"""<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/vd_food_base">
+    <target android:name="food_path">
+        <aapt:attr name="android:animation" xmlns:aapt="http://schemas.android.com/aapt">
+            <objectAnimator
+                android:duration="8000"
+                android:propertyName="pathData"
+                android:valueType="pathType"
+                android:repeatCount="infinite"
+                android:repeatMode="restart"
+                android:interpolator="@android:interpolator/linear">
+                <propertyValuesHolder android:propertyName="pathData" android:valueType="pathType">
+                    <keyframe android:fraction="0.0" android:value="{apple_path}"/>
+                    <keyframe android:fraction="0.12" android:value="{apple_path}"/>
+                    <keyframe android:fraction="0.25" android:value="{banana_path}"/>
+                    <keyframe android:fraction="0.37" android:value="{banana_path}"/>
+                    <keyframe android:fraction="0.5" android:value="{bread_path}"/>
+                    <keyframe android:fraction="0.62" android:value="{bread_path}"/>
+                    <keyframe android:fraction="0.75" android:value="{carrot_path}"/>
+                    <keyframe android:fraction="0.87" android:value="{carrot_path}"/>
+                    <keyframe android:fraction="1.0" android:value="{apple_path}"/>
+                </propertyValuesHolder>
+                <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                    <keyframe android:fraction="0.0" android:value="#3fb84f"/>
+                    <keyframe android:fraction="0.12" android:value="#3fb84f"/>
+                    <keyframe android:fraction="0.25" android:value="#f4cc3a"/>
+                    <keyframe android:fraction="0.37" android:value="#f4cc3a"/>
+                    <keyframe android:fraction="0.5" android:value="#d99a52"/>
+                    <keyframe android:fraction="0.62" android:value="#d99a52"/>
+                    <keyframe android:fraction="0.75" android:value="#f0973a"/>
+                    <keyframe android:fraction="0.87" android:value="#f0973a"/>
+                    <keyframe android:fraction="1.0" android:value="#3fb84f"/>
+                </propertyValuesHolder>
+            </objectAnimator>
+        </aapt:attr>
+    </target>
+</animated-vector>
+"""
+
+with open("avd_food_morph.xml", "w") as f:
+    f.write(xml)
+
+base_vd = f"""<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:name="food_path"
+        android:pathData="{apple_path}"
+        android:fillColor="#3fb84f"/>
+</vector>
+"""
+
+with open("vd_food_base.xml", "w") as f:
+    f.write(base_vd)
+print("Files generated.")
