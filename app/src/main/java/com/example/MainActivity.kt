@@ -160,7 +160,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 @Composable
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
-    val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store, Screen.Smiles)
+    val items = BottomTabs
     val appContext = LocalContext.current
     var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
     LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
@@ -178,15 +178,7 @@ fun KarmaKitchenApp() {
                 exit = scaleOut(tween(150)) + fadeOut(tween(150))
             ) {
                 FloatingActionButton(
-                    onClick = { 
-                        navController.navigate(Screen.Donate.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
+                    onClick = { navController.goToTab(Screen.Donate.route) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = OnPrimaryGreen
                 ) {
@@ -215,15 +207,7 @@ fun KarmaKitchenApp() {
                                 unselectedIconColor = TextSecondary,
                                 unselectedTextColor = TextSecondary
                             ),
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            onClick = { navController.goToTab(screen.route) }
                         )
                     }
                 }
@@ -691,7 +675,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
         }
 
         item {
-            SmileTeaserCard(onClick = { navController.navigate(Screen.Smiles.route) })
+            SmileTeaserCard(onClick = { navController.goToTab(Screen.Smiles.route) })
         }
 
         item {

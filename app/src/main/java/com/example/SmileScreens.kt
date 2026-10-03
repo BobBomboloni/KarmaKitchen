@@ -207,6 +207,19 @@ fun SmileWallScreen(donorName: String) {
     }
 }
 
+/** Small label on the built-in sample photos, so they are never mistaken for real submissions. */
+@Composable
+private fun ExampleTag(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(BackgroundColor.copy(alpha = 0.75f))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text("EXAMPLE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+    }
+}
+
 @Composable
 private fun SmileStat(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
@@ -235,12 +248,17 @@ private fun SmilePhotoCard(entry: SmileEntry, onClick: () -> Unit) {
         border = BorderStroke(1.dp, OutlineColor)
     ) {
         Column {
-            AsyncImage(
-                model = File(entry.photoPath),
-                contentDescription = "Photo from ${entry.ngoName}",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(0.85f)
-            )
+            Box {
+                AsyncImage(
+                    model = File(entry.photoPath),
+                    contentDescription = "Photo from ${entry.ngoName}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                )
+                if (entry.isExample) {
+                    ExampleTag(modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
+                }
+            }
             Column(modifier = Modifier.padding(12.dp).heightIn(min = 96.dp)) {
                 Text(
                     "“${entry.message}”",
@@ -281,12 +299,17 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
             border = BorderStroke(1.dp, OutlineColor)
         ) {
             Column {
-                AsyncImage(
-                    model = File(entry.photoPath),
-                    contentDescription = "Photo from ${entry.ngoName}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(320.dp)
-                )
+                Box {
+                    AsyncImage(
+                        model = File(entry.photoPath),
+                        contentDescription = "Photo from ${entry.ngoName}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth().height(300.dp)
+                    )
+                    if (entry.isExample) {
+                        ExampleTag(modifier = Modifier.align(Alignment.TopStart).padding(12.dp))
+                    }
+                }
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         "“${entry.message}”",
@@ -302,6 +325,13 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
                         color = TextSecondary
                     )
                     Text(formatSmileDate(entry.sentAt), style = MaterialTheme.typography.bodySmall, color = TextTertiary)
+                    if (entry.isExample) {
+                        Text(
+                            "Example photo, shown to demonstrate the Smile Wall.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextTertiary
+                        )
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         TextButton(onClick = { if (confirmRemove) onRemove() else confirmRemove = true }) {

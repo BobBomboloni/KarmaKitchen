@@ -43,7 +43,9 @@ data class SmileEntry(
     val message: String,
     val people: Int,
     val photoPath: String,
-    val sentAt: Long
+    val sentAt: Long,
+    /** True for the built-in sample photos that show how the Smile Wall looks. */
+    val isExample: Boolean = false
 )
 
 /**
@@ -54,6 +56,8 @@ data class SmileEntry(
 object SmileStore {
     private const val PREFS = "karmakitchen_smiles"
     private const val KEY = "entries"
+    private const val KEY_EXAMPLES_SEEDED = "examples_seeded"
+    private const val DAY_MS = 24L * 60 * 60 * 1000
     private var loaded = false
 
     /** Newest first. Compose reads of this list update automatically. */
@@ -62,9 +66,65 @@ object SmileStore {
     fun load(context: Context) {
         if (loaded) return
         loaded = true
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null) ?: return
-        // Skip entries whose photo file is gone (for example after clearing app data).
-        smiles.addAll(smilesFromJson(raw).filter { File(it.photoPath).exists() })
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.getString(KEY, null)?.let { raw ->
+            // Skip entries whose photo file is gone (for example after clearing app data).
+            smiles.addAll(smilesFromJson(raw).filter { File(it.photoPath).exists() })
+        }
+        // Add the sample photos once, so the wall is not empty the first time it is opened.
+        if (!prefs.getBoolean(KEY_EXAMPLES_SEEDED, false)) {
+            seedExamples(context)
+            prefs.edit().putBoolean(KEY_EXAMPLES_SEEDED, true).apply()
+        }
+    }
+
+    private class ExampleSpec(
+        val id: String,
+        val drawable: Int,
+        val donationTitle: String,
+        val ngoName: String,
+        val message: String,
+        val people: Int,
+        val daysAgo: Int
+    )
+
+    private fun seedExamples(context: Context) {
+        val specs = listOf(
+            ExampleSpec(
+                "example-1", R.drawable.smile_example_1, "Dal Khichdi, 30 servings",
+                "Annapurna Seva Trust", "Our little ones finished every bite. Thank you!", 30, 2
+            ),
+            ExampleSpec(
+                "example-2", R.drawable.smile_example_2, "Veg Pulao, 25 servings",
+                "Hope Shelter", "Full plates and big smiles today. Thank you!", 25, 9
+            )
+        )
+        val dir = File(context.filesDir, "smiles").apply { mkdirs() }
+        val now = System.currentTimeMillis()
+        val seeded = specs.mapNotNull { spec ->
+            try {
+                val file = File(dir, "${spec.id}.jpg")
+                context.resources.openRawResource(spec.drawable).use { input ->
+                    FileOutputStream(file).use { out -> input.copyTo(out) }
+                }
+                SmileEntry(
+                    id = spec.id,
+                    donationId = "example-${spec.id}",
+                    donationTitle = spec.donationTitle,
+                    ngoName = spec.ngoName,
+                    message = spec.message,
+                    people = spec.people,
+                    photoPath = file.absolutePath,
+                    sentAt = now - spec.daysAgo * DAY_MS,
+                    isExample = true
+                )
+            } catch (e: Exception) {
+                Log.w("SmileStore", "Could not add example photo ${spec.id}", e)
+                null
+            }
+        }
+        smiles.addAll(seeded.sortedByDescending { it.sentAt })
+        save(context)
     }
 
     fun add(context: Context, entry: SmileEntry) {
@@ -101,6 +161,7 @@ internal fun smilesToJson(list: List<SmileEntry>): String {
                 .put("people", s.people)
                 .put("photoPath", s.photoPath)
                 .put("sentAt", s.sentAt)
+                .put("isExample", s.isExample)
         )
     }
     return array.toString()
@@ -118,7 +179,8 @@ internal fun smilesFromJson(raw: String): List<SmileEntry> = try {
             message = o.getString("message"),
             people = o.getInt("people"),
             photoPath = o.getString("photoPath"),
-            sentAt = o.getLong("sentAt")
+            sentAt = o.getLong("sentAt"),
+            isExample = o.optBoolean("isExample", false)
         )
     }
 } catch (e: Exception) {

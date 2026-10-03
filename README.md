@@ -6,7 +6,7 @@ AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with K
 - Donor flow: photograph food, Gemini checks safety and quality, donor reviews and submits.
 - NGO flow: intake verification scan, inventory and deliveries (demo data).
 - Karma Points, tiers and the Karma Store (local state, demo vouchers).
-- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device.
+- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two labelled example photos are added on first launch so the wall is not empty.
 
 ## Not built yet
 Auto-matching, collector role, live delivery tracking, raw-material requests, and a shared backend (so smiles can reach the donor's own phone).

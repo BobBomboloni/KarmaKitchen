@@ -27,7 +27,7 @@ class SmileStoreTest {
 
     @Test
     fun jsonRoundTripKeepsEveryField() {
-        val original = listOf(entry("a"), entry("b", "bakery"))
+        val original = listOf(entry("a"), entry("b", "bakery"), entry("c").copy(isExample = true))
         assertEquals(original, smilesFromJson(smilesToJson(original)))
     }
 
