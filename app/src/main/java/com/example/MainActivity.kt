@@ -28,8 +28,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
@@ -122,11 +120,6 @@ data class UserProfile(
     val karmaPoints: Int = 1240
 )
 
-val UserProfileSaver = listSaver<MutableState<UserProfile>, Any>(
-    save = { s -> val u = s.value; listOf(u.name, u.email, u.phone, u.address, u.karmaPoints) },
-    restore = { l -> mutableStateOf(UserProfile(l[0] as String, l[1] as String, l[2] as String, l[3] as String, l[4] as Int)) }
-)
-
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object RoleSelection : Screen("role_selection", "Role Selection", Icons.Filled.Star)
     object NgoDashboard : Screen("ngo_dashboard", "NGO Dashboard", Icons.Filled.Home)
@@ -143,7 +136,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
     val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store)
-    var userProfile by rememberSaveable(stateSaver = UserProfileSaver) { mutableStateOf(UserProfile()) }
+    val appContext = LocalContext.current
+    var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
+    LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -845,15 +840,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
         }
     }
 
-    val calculatedPoints = remember(servings, qualityText) {
-        val servingsNum = (Regex("\\d+").find(servings)?.value?.toIntOrNull() ?: 1).coerceIn(1, 50)
-        val qualityMultiplier = when {
-            qualityText.contains("High", ignoreCase = true) || qualityText.contains("Excellent", ignoreCase = true) || qualityText.contains("Fresh", ignoreCase = true) -> 50
-            qualityText.contains("Medium", ignoreCase = true) || qualityText.contains("Good", ignoreCase = true) -> 30
-            else -> 20
-        }
-        servingsNum * qualityMultiplier
-    }
+    val calculatedPoints = remember(servings, qualityText) { calculateKarmaPoints(servings, qualityText) }
 
     fun analyzeUri(uri: Uri) {
         capturedImageUri = uri
@@ -2283,13 +2270,14 @@ fun FoodWasteFactBar() {
     var facts by remember { mutableStateOf<com.example.api.FoodWasteFacts?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+    val factsContext = LocalContext.current
 
     LaunchedEffect(Unit) {
         isLoading = true
         // Default facts as a fallback immediately for UI responsiveness, then load actual
         facts = com.example.api.FoodWasteFacts(
-            worldWaste = "1.3B Tonnes",
-            indiaWaste = "68.7M Tonnes",
+            worldWaste = "1.05B Tonnes",
+            indiaWaste = "78M Tonnes",
             gujaratWaste = "Loading...",
             indiaWasteKgPerSec = 2178.2,
             gujaratWasteKgPerSec = 112.5,
@@ -2297,8 +2285,10 @@ fun FoodWasteFactBar() {
         )
         
         try {
-            val fetchedFacts = com.example.api.fetchFoodWasteFacts()
+            val cached = loadCachedFacts(factsContext)
+            val fetchedFacts = cached ?: com.example.api.fetchFoodWasteFacts()
             if (fetchedFacts != null) {
+                if (cached == null) saveCachedFacts(factsContext, fetchedFacts)
                 facts = fetchedFacts
             } else {
                 facts = com.example.api.FoodWasteFacts(
@@ -2338,7 +2328,7 @@ fun FoodWasteFactBar() {
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            if (isLoading && facts?.worldWaste == "1.3B Tonnes") {
+            if (isLoading && facts?.worldWaste == "1.05B Tonnes") {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(16.dp))
             }

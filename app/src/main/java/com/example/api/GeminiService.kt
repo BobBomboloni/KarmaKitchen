@@ -254,17 +254,7 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
         val rawSafe = jsonObject.optBoolean("safe", false) // fail closed
         val rejectionReason = jsonObject.optString("rejectionReason", "")
 
-        val qualityLower = quality.lowercase()
-        val isUnsafeKeywords = qualityLower.contains("spoil") ||
-                qualityLower.contains("inedible") ||
-                qualityLower.contains("unfit") ||
-                qualityLower.contains("unsafe") ||
-                qualityLower.contains("mold") ||
-                qualityLower.contains("mould") ||
-                Regex("\\brot(ten|ting|s)?\\b").containsMatchIn(qualityLower) ||
-                qualityLower.contains("decay") ||
-                qualityLower.contains("expired") ||
-                qualityLower.contains("contaminat")
+        val isUnsafeKeywords = com.example.isUnsafeQuality(quality)
 
         val isSafe = rawSafe && !isUnsafeKeywords
 
