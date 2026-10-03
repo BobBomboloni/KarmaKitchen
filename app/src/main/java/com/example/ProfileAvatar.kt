@@ -27,7 +27,7 @@ fun ProfileAvatar(initials: String, modifier: Modifier = Modifier) {
         Text(
             text = initials,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
         )
         return
@@ -73,8 +73,8 @@ fun ProfileAvatar(initials: String, modifier: Modifier = Modifier) {
 
 /** Greeting for the dashboard header, based on the hour of the day (0-23). */
 fun greetingForHour(hour: Int): String = when (hour) {
-    in 5..11 -> "GOOD MORNING,"
-    in 12..16 -> "GOOD AFTERNOON,"
-    in 17..20 -> "GOOD EVENING,"
-    else -> "HELLO,"
+    in 5..11 -> "Good morning"
+    in 12..16 -> "Good afternoon"
+    in 17..20 -> "Good evening"
+    else -> "Hello"
 }

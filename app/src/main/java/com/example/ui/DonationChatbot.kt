@@ -41,9 +41,8 @@ fun DonationChatbot() {
         modifier = Modifier
             .fillMaxWidth()
             .height(400.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, OutlineColor)
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             // Header
@@ -57,11 +56,10 @@ fun DonationChatbot() {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        "FOOD DONATION ASSISTANT",
+                        "Food safety help",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        letterSpacing = (-0.3).sp
                     )
                     Text(
                         "Ask about food safety, storage, or disposal",
@@ -84,7 +82,7 @@ fun DonationChatbot() {
                 if (messages.isEmpty()) {
                     item {
                         Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
-                            Text("Hi! Have a question about donating food? Ask me anything.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            Text("Have a question about donating food? Ask me anything.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 } else {
@@ -109,7 +107,7 @@ fun DonationChatbot() {
                     onValueChange = { inputText = it },
                     placeholder = { Text("Ask a question...") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryGreen,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline

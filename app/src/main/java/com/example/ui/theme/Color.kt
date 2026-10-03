@@ -23,16 +23,16 @@ val OnSecondaryAmber = Color(0xFF3B2300)
 
 // Neutrals (green-tinted dark)
 val BackgroundColor = Color(0xFF0E1410)       // screens
-val SurfaceColor = Color(0xFF161D18)          // cards
-val SurfaceVariantColor = Color(0xFF202A23)   // tiles inside cards, chat bubbles
-val SurfaceHighColor = Color(0xFF1C241E)      // dialogs, menus
+val SurfaceColor = Color(0xFF1A231D)          // cards
+val SurfaceVariantColor = Color(0xFF26332B)   // tiles inside cards, chat bubbles
+val SurfaceHighColor = Color(0xFF222D26)      // dialogs, menus
 val OutlineColor = Color(0xFF2E3B33)          // subtle card borders and dividers
 val OutlineStrong = Color(0xFF66776B)         // input borders (3:1 on surfaces)
 
 // Text
 val TextPrimary = Color(0xFFEEF3EE)
 val TextSecondary = Color(0xFFAEBBB1)
-val TextTertiary = Color(0xFF8A988E)          // hints and captions
+val TextTertiary = Color(0xFF93A298)          // hints and captions
 
 // Feature cards on the donor dashboard
 val KarmaCardBg = Color(0xFF183524)
@@ -52,6 +52,7 @@ val OnInfoContainer = Color(0xFFCFEBFA)
 val NonVegColor = Color(0xFFFF8A65)
 val NonVegContainer = Color(0xFF3B2218)
 val AccentGold = Color(0xFFF2C14E)            // tips, highlights, torch
+val AccentCoral = Color(0xFFFF7468)           // tint behind the "smiles" illustration
 
 // Impact tiers (silver and platinum are clearly different: neutral vs icy blue)
 val TierBronze = Color(0xFFD4915A)

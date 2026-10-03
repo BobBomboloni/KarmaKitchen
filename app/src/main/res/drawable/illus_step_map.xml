@@ -1,0 +1,93 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#4FA05B"
+        android:pathData="M24,26 H96 A16,16 0 0 1 112,42 V92 A16,16 0 0 1 96,108 H24 A16,16 0 0 1 8,92 V42 A16,16 0 0 1 24,26 Z"/>
+    <group>
+        <clip-path android:pathData="M24,26 H96 A16,16 0 0 1 112,42 V92 A16,16 0 0 1 96,108 H24 A16,16 0 0 1 8,92 V42 A16,16 0 0 1 24,26 Z"/>
+        <path
+            android:fillColor="#7DC87A"
+            android:fillAlpha="0.9"
+            android:pathData="M12,46 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0 Z"/>
+        <path
+            android:fillColor="#7EC8F0"
+            android:pathData="M8,92 C30,78 52,104 76,94 S104,88 112,92 V108 H8 Z"/>
+        <path
+            android:strokeColor="#F6EAD0"
+            android:strokeWidth="8"
+            android:strokeLineCap="butt"
+            android:strokeLineJoin="round"
+            android:pathData="M8,66 H112"/>
+        <path
+            android:strokeColor="#F6EAD0"
+            android:strokeWidth="8"
+            android:strokeLineCap="butt"
+            android:strokeLineJoin="round"
+            android:pathData="M46,26 V108"/>
+        <path
+            android:strokeColor="#F6EAD0"
+            android:strokeWidth="6"
+            android:strokeLineCap="butt"
+            android:strokeLineJoin="round"
+            android:pathData="M86,26 L112,56"/>
+        <path
+            android:fillColor="#2F6F3E"
+            android:fillAlpha="0.5"
+            android:pathData="M59,74 H71 A3,3 0 0 1 74,77 V81 A3,3 0 0 1 71,84 H59 A3,3 0 0 1 56,81 V77 A3,3 0 0 1 59,74 Z"/>
+        <path
+            android:fillColor="#2F6F3E"
+            android:fillAlpha="0.5"
+            android:pathData="M17,74 H33 A3,3 0 0 1 36,77 V81 A3,3 0 0 1 33,84 H17 A3,3 0 0 1 14,81 V77 A3,3 0 0 1 17,74 Z"/>
+        <path
+            android:fillColor="#2F6F3E"
+            android:fillAlpha="0.5"
+            android:pathData="M59,34 H75 A3,3 0 0 1 78,37 V43 A3,3 0 0 1 75,46 H59 A3,3 0 0 1 56,43 V37 A3,3 0 0 1 59,34 Z"/>
+    </group>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M29.9,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M37.4,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M44.9,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M52.4,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M59.9,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M67.4,66 a2.1,2.1 0 1,0 4.2,0 a2.1,2.1 0 1,0 -4.2,0 Z"/>
+    <path
+        android:fillColor="#2F6F3E"
+        android:pathData="M12.5,66 a6.5,6.5 0 1,0 13,0 a6.5,6.5 0 1,0 -13,0 Z"/>
+    <path
+        android:fillColor="#F6EAD0"
+        android:pathData="M16.4,66 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0 Z"/>
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.3"
+        android:pathData="M68,67 a10,3.2 0 1,0 20,0 a10,3.2 0 1,0 -20,0 Z"/>
+    <path
+        android:fillColor="#FF7468"
+        android:pathData="M78,66 C78,66 59,48 59,32 A19,19 0 1 1 97,32 C97,48 78,66 78,66 Z"/>
+    <path
+        android:fillColor="#C23F2A"
+        android:fillAlpha="0.3"
+        android:pathData="M78,66 C78,66 97,48 97,32 A19,19 0 0 0 78,13 Z"/>
+    <path
+        android:fillColor="#F4F7F2"
+        android:pathData="M70,32 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z"/>
+    <path
+        android:fillColor="#FFD58A"
+        android:pathData="M106,8 Q106.96,13.04 112,14 Q106.96,14.96 106,20 Q105.04,14.96 100,14 Q105.04,13.04 106,8 Z"/>
+    <path
+        android:fillColor="#B5E3AE"
+        android:pathData="M12,17 Q12.8,21.2 17,22 Q12.8,22.8 12,27 Q11.2,22.8 7,22 Q11.2,21.2 12,17 Z"/>
+</vector>
