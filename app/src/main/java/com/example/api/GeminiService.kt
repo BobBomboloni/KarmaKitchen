@@ -31,7 +31,8 @@ data class GenerateContentRequest(
 
 @JsonClass(generateAdapter = true)
 data class Content(
-    val parts: List<Part>
+    val parts: List<Part>,
+    val role: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -88,17 +89,14 @@ suspend fun chatWithGemini(history: List<ChatMessage>, newMessage: String): Stri
     
     val systemInstruction = "You are a helpful AI assistant for KarmaKitchen. Your MAIN priority is answering queries related to food donation. You also help with food storage and food safety. If a user asks about topics unrelated to food donation, storage, or safety, politely decline and steer the conversation back. Be concise, friendly, and practical. Do not use Markdown, just plain text if possible, or very simple formatting."
     
-    val parts = mutableListOf<Part>()
-    parts.add(Part(text = "System: " + systemInstruction))
-    for (msg in history) {
-        parts.add(Part(text = (if(msg.isUser) "User: " else "Assistant: ") + msg.text))
-    }
-    parts.add(Part(text = "User: " + newMessage))
-    
+    val contents = history.map { Content(role = if (it.isUser) "user" else "model", parts = listOf(Part(text = it.text))) } +
+        Content(role = "user", parts = listOf(Part(text = newMessage)))
+
     val request = GenerateContentRequest(
-        contents = listOf(Content(parts = parts))
+        contents = contents,
+        systemInstruction = Content(parts = listOf(Part(text = systemInstruction)))
     )
-    
+
     try {
         val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
         val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
@@ -250,10 +248,10 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
         val title = jsonObject.optString("title", "Food Item")
         val quantity = jsonObject.optString("quantity", "1-2 servings")
         val isVeg = jsonObject.optBoolean("isVeg", true)
-        val quality = jsonObject.optString("quality", "Fresh & Verified")
-        val shelfLife = jsonObject.optString("shelfLife", "12-24 Hours")
+        val quality = jsonObject.optString("quality", "Unverified")
+        val shelfLife = jsonObject.optString("shelfLife", "Unknown")
         val storageTip = jsonObject.optString("storageTip", "Keep chilled and covered.")
-        val rawSafe = jsonObject.optBoolean("safe", true)
+        val rawSafe = jsonObject.optBoolean("safe", false) // fail closed
         val rejectionReason = jsonObject.optString("rejectionReason", "")
 
         val qualityLower = quality.lowercase()
@@ -263,7 +261,7 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
                 qualityLower.contains("unsafe") ||
                 qualityLower.contains("mold") ||
                 qualityLower.contains("mould") ||
-                qualityLower.contains("rot") ||
+                Regex("\\brot(ten|ting|s)?\\b").containsMatchIn(qualityLower) ||
                 qualityLower.contains("decay") ||
                 qualityLower.contains("expired") ||
                 qualityLower.contains("contaminat")
@@ -348,8 +346,8 @@ suspend fun fetchFoodWasteFacts(): FoodWasteFacts? = withContext(Dispatchers.IO)
             
         val jsonObject = org.json.JSONObject(cleanJson)
         FoodWasteFacts(
-            worldWaste = jsonObject.optString("worldWaste", "1.3 Billion Tonnes"),
-            indiaWaste = jsonObject.optString("indiaWaste", "68.7 Million Tonnes"),
+            worldWaste = jsonObject.optString("worldWaste", "1.05 Billion Tonnes"),
+            indiaWaste = jsonObject.optString("indiaWaste", "78 Million Tonnes"),
             gujaratWaste = jsonObject.optString("gujaratWaste", "Thousands of Tonnes"),
             indiaWasteKgPerSec = jsonObject.optDouble("indiaWasteKgPerSec", 2178.2),
             gujaratWasteKgPerSec = jsonObject.optDouble("gujaratWasteKgPerSec", 112.5),

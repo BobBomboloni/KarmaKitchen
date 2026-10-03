@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
@@ -113,11 +115,16 @@ class MainActivity : ComponentActivity() {
 }
 
 data class UserProfile(
-    val name: String = "Shamikh Chasmawala",
-    val email: String = "shamikhc24118@gmail.com",
+    val name: String = "",
+    val email: String = "",
     val phone: String = "",
     val address: String = "",
     val karmaPoints: Int = 1240
+)
+
+val UserProfileSaver = listSaver<MutableState<UserProfile>, Any>(
+    save = { s -> val u = s.value; listOf(u.name, u.email, u.phone, u.address, u.karmaPoints) },
+    restore = { l -> mutableStateOf(UserProfile(l[0] as String, l[1] as String, l[2] as String, l[3] as String, l[4] as Int)) }
 )
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
@@ -136,7 +143,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
     val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store)
-    var userProfile by remember { mutableStateOf(UserProfile()) }
+    var userProfile by rememberSaveable(stateSaver = UserProfileSaver) { mutableStateOf(UserProfile()) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -517,7 +524,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             letterSpacing = 1.sp
                         )
                         Text(
-                            text = userProfile.name,
+                            text = userProfile.name.ifBlank { "Donor" },
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -608,13 +615,13 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("1,240 KP", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                        Text("%,d KP".format(userProfile.karmaPoints), style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
                         Text("2,000 KP (Silver)", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = TextSecondary)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     
                     LinearProgressIndicator(
-                        progress = { 1240f / 2000f },
+                        progress = { (userProfile.karmaPoints / 2000f).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -624,7 +631,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    Text("Save 760 more points worth of food to reach the next tier!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text(if (userProfile.karmaPoints < 2000) "Save ${2000 - userProfile.karmaPoints} more points worth of food to reach the next tier!" else "Silver tier unlocked. See Impact Tiers for the next goal!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
         }
@@ -839,7 +846,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
     }
 
     val calculatedPoints = remember(servings, qualityText) {
-        val servingsNum = Regex("\\d+").find(servings)?.value?.toIntOrNull() ?: 1
+        val servingsNum = (Regex("\\d+").find(servings)?.value?.toIntOrNull() ?: 1).coerceIn(1, 50)
         val qualityMultiplier = when {
             qualityText.contains("High", ignoreCase = true) || qualityText.contains("Excellent", ignoreCase = true) || qualityText.contains("Fresh", ignoreCase = true) -> 50
             qualityText.contains("Medium", ignoreCase = true) || qualityText.contains("Good", ignoreCase = true) -> 30
@@ -2071,7 +2078,7 @@ fun ProfileEditScreen(
         
         Button(
             onClick = {
-                onProfileUpdate(UserProfile(name, email, phone, address))
+                onProfileUpdate(profile.copy(name = name, email = email, phone = phone, address = address))
                 onBack()
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -2295,8 +2302,8 @@ fun FoodWasteFactBar() {
                 facts = fetchedFacts
             } else {
                 facts = com.example.api.FoodWasteFacts(
-                    worldWaste = "1.3 Billion Tonnes",
-                    indiaWaste = "68 Million Tonnes",
+                    worldWaste = "1.05 Billion Tonnes",
+                    indiaWaste = "78 Million Tonnes",
                     gujaratWaste = "Thousands of Tonnes",
                     indiaWasteKgPerSec = 2178.2,
                     gujaratWasteKgPerSec = 112.5,
@@ -2305,8 +2312,8 @@ fun FoodWasteFactBar() {
             }
         } catch (e: Exception) {
              facts = com.example.api.FoodWasteFacts(
-                worldWaste = "1.3 Billion Tonnes",
-                indiaWaste = "68 Million Tonnes",
+                worldWaste = "1.05 Billion Tonnes",
+                indiaWaste = "78 Million Tonnes",
                 gujaratWaste = "Thousands of Tonnes",
                 indiaWasteKgPerSec = 2178.2,
                 gujaratWasteKgPerSec = 112.5,
@@ -2493,6 +2500,7 @@ fun NgoDashboardScreen(navController: NavController) {
     var isAnalyzing by remember { mutableStateOf(false) }
     var analysisResult by remember { mutableStateOf<IntakeAnalysisResult?>(null) }
     var showResultDialog by remember { mutableStateOf(false) }
+    var scanError by remember { mutableStateOf<String?>(null) }
     
     val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -2506,14 +2514,10 @@ fun NgoDashboardScreen(navController: NavController) {
                     analysisResult = verifyIntakeWithGemini(base64)
                     showResultDialog = true
                 } catch (e: Exception) {
-                    analysisResult = IntakeAnalysisResult(
-                        verifiedMatch = true,
-                        freshness = "Visually Fresh & Verified",
-                        estimatedExpiration = "Consume within 24 Hours",
-                        storageInstructions = "Refrigerate immediately at 4°C",
-                        dietaryTags = listOf("Vegan", "High-Protein", "Gluten-Free")
-                    )
-                    showResultDialog = true
+                    // Never fabricate a "verified" result: ask for a manual inspection instead.
+                    analysisResult = null
+                    showResultDialog = false
+                    scanError = "AI check unavailable. Please inspect the food manually before accepting it."
                 } finally {
                     isAnalyzing = false
                 }
@@ -2774,6 +2778,15 @@ fun NgoDashboardScreen(navController: NavController) {
             containerColor = Color(0xFF1C1C1E),
             titleContentColor = Color.White,
             textContentColor = Color.LightGray
+        )
+    }
+
+    if (scanError != null) {
+        AlertDialog(
+            onDismissRequest = { scanError = null },
+            title = { Text("Could not verify food") },
+            text = { Text(scanError ?: "") },
+            confirmButton = { TextButton(onClick = { scanError = null }) { Text("OK") } }
         )
     }
 
