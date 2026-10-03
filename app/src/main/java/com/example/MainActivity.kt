@@ -748,7 +748,6 @@ val dummyFeed = listOf(
     LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", Icons.Filled.Stars, AccentGold),
     LiveFeedItem("Hope Shelter reached its daily goal of 200 meals!", Icons.Filled.EmojiEvents, AccentGold)
 )
-)
 
 @Composable
 fun LiveFeedCard(item: LiveFeedItem) {
@@ -793,7 +792,6 @@ val recentDonations = listOf(
     DonationItem("Leftover Catering Sandwiches", "Yesterday, 7:45 PM", "Delivered", 150),
     DonationItem("Fresh Vegetable Basket", "29 Sep", "Delivered", 200),
     DonationItem("Bakery Surplus, 20 breads", "26 Sep", "Delivered", 100)
-)
 )
 
 @Composable
