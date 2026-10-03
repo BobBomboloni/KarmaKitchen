@@ -39,12 +39,12 @@ private val DarkColorScheme =
     outlineVariant = OutlineColor,
     scrim = Color.Black,
     surfaceDim = BackgroundColor,
-    surfaceBright = Color(0xFF2A352D),
+    surfaceBright = Color(0xFF2D3A31),
     surfaceContainerLowest = Color(0xFF0B100D),
     surfaceContainerLow = Color(0xFF121915),
     surfaceContainer = SurfaceColor,
     surfaceContainerHigh = SurfaceHighColor,
-    surfaceContainerHighest = Color(0xFF222D25)
+    surfaceContainerHighest = SurfaceVariantColor
   )
 
 @Composable

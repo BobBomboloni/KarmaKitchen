@@ -59,21 +59,15 @@ fun SmileTeaserCard(onClick: () -> Unit) {
     val smiles = SmileStore.smiles.toList()
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, OutlineColor)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (smiles.isEmpty()) {
-                Box(
-                    modifier = Modifier.size(44.dp).clip(CircleShape).background(SecondaryAmber.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber)
-                }
+                Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber, modifier = Modifier.size(32.dp))
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
                     smiles.take(3).forEach { smile ->
@@ -91,7 +85,7 @@ fun SmileTeaserCard(onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Smile Wall", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text("Smile wall", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Text(
                     if (smiles.isEmpty()) "See the smiles your food creates"
                     else "${smiles.size} ${if (smiles.size == 1) "smile" else "smiles"} from people you helped",
@@ -119,15 +113,8 @@ fun SmileWallScreen(donorName: String) {
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                Box(
-                    modifier = Modifier.size(48.dp).clip(CircleShape).background(SecondaryAmber.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber, modifier = Modifier.size(28.dp))
-                }
-                Spacer(modifier = Modifier.width(14.dp))
                 Column {
-                    Text("Smile Wall", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Smile wall", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     Text(
                         if (donorName.isBlank()) "The smiles your food created"
                         else "Thank you, $donorName. These smiles are yours.",
@@ -150,9 +137,8 @@ fun SmileWallScreen(donorName: String) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, OutlineColor)
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(28.dp),
@@ -160,7 +146,7 @@ fun SmileWallScreen(donorName: String) {
                     ) {
                         Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber, modifier = Modifier.size(48.dp))
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("No smiles yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("No smiles yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "When an NGO receives your donation, it can send you a photo of the people who enjoyed the food. It will appear here.",
@@ -216,7 +202,7 @@ private fun ExampleTag(modifier: Modifier = Modifier) {
             .background(BackgroundColor.copy(alpha = 0.75f))
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text("EXAMPLE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Example", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = TextPrimary)
     }
 }
 
@@ -226,13 +212,12 @@ private fun SmileStat(label: String, value: String, modifier: Modifier = Modifie
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceColor)
-            .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
         Text(
             value,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMono),
-            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
+            fontWeight = FontWeight.Bold,
             color = SecondaryAmber
         )
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -243,9 +228,8 @@ private fun SmileStat(label: String, value: String, modifier: Modifier = Modifie
 private fun SmilePhotoCard(entry: SmileEntry, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, OutlineColor)
     ) {
         Column {
             Box {
@@ -272,7 +256,7 @@ private fun SmilePhotoCard(entry: SmileEntry, onClick: () -> Unit) {
                 Text(
                     entry.ngoName,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = SecondaryAmber,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -294,9 +278,8 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
     var confirmRemove by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceHighColor),
-            border = BorderStroke(1.dp, OutlineColor)
         ) {
             Column {
                 Box {
@@ -318,7 +301,7 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
                         color = TextPrimary
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(entry.ngoName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = SecondaryAmber)
+                    Text(entry.ngoName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = SecondaryAmber)
                     Text(
                         "${entry.people} people fed • ${entry.donationTitle}",
                         style = MaterialTheme.typography.bodySmall,
@@ -342,7 +325,7 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
                         ) {
-                            Text("Close", fontWeight = FontWeight.Bold)
+                            Text("Close", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -365,19 +348,11 @@ fun ReceivalCard(receival: Receival, onSendSmile: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceColor)
-            .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(SecondaryAmber.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Filled.Restaurant, contentDescription = null, tint = SecondaryAmber)
-            }
-            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(receival.title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text(receival.title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
                 Text(
                     "Received ${receival.receivedText} • ${receival.servings} servings",
                     style = MaterialTheme.typography.bodyMedium,
@@ -390,7 +365,7 @@ fun ReceivalCard(receival: Receival, onSendSmile: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SuccessColor, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Smile sent to the donor", color = SuccessColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text("Smile sent to the donor", color = SuccessColor, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
             }
         } else {
             Button(
@@ -401,7 +376,7 @@ fun ReceivalCard(receival: Receival, onSendSmile: () -> Unit) {
             ) {
                 Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Send a Smile", fontWeight = FontWeight.Bold)
+                Text("Send a smile", fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -428,14 +403,13 @@ fun CameraGate(onCaptured: (Uri) -> Unit, onCancel: () -> Unit, onError: (String
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, OutlineColor)
             ) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Filled.PhotoCamera, contentDescription = null, tint = SecondaryAmber, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Camera Permission Needed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Camera access needed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "KarmaKitchen needs camera access to take a photo for the donor.",
@@ -554,7 +528,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Send a Smile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Text("Send a smile", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -570,18 +544,10 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, OutlineColor)
         ) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(SecondaryAmber.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Restaurant, contentDescription = null, tint = SecondaryAmber)
-                }
-                Spacer(modifier = Modifier.width(14.dp))
                 Column {
-                    Text(receival.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(receival.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     Text(
                         "Received ${receival.receivedText} • ${receival.servings} servings",
                         style = MaterialTheme.typography.bodySmall,
@@ -597,9 +563,8 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(260.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(SurfaceVariantColor)
-                .border(1.dp, OutlineColor, RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceVariantColor),
             contentAlignment = Alignment.Center
         ) {
             val chosen = photoUri
@@ -635,7 +600,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             ) {
                 Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (photoUri == null) "Take photo" else "Retake", fontWeight = FontWeight.Bold)
+                Text(if (photoUri == null) "Take photo" else "Retake", fontWeight = FontWeight.SemiBold)
             }
             OutlinedButton(
                 onClick = { galleryLauncher.launch("image/*") },
@@ -666,7 +631,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             IconButton(onClick = { if (people > 1) people-- }) {
                 Icon(Icons.Filled.Remove, contentDescription = "Fewer people", tint = TextPrimary)
             }
-            Text(people.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = SecondaryAmber)
+            Text(people.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = SecondaryAmber)
             IconButton(onClick = { if (people < 500) people++ }) {
                 Icon(Icons.Filled.Add, contentDescription = "More people", tint = TextPrimary)
             }
@@ -678,7 +643,6 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor),
-            border = BorderStroke(1.dp, OutlineColor)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { consent = !consent }.padding(12.dp),
@@ -726,7 +690,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             } else {
                 Icon(Icons.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Send to donor", fontWeight = FontWeight.Bold)
+                Text("Send to donor", fontWeight = FontWeight.SemiBold)
             }
         }
         if (!canSend && !isSending) {
@@ -746,11 +710,11 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
         AlertDialog(
             onDismissRequest = {},
             icon = { Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber) },
-            title = { Text("Smile sent!") },
+            title = { Text("Smile sent") },
             text = { Text("The donor will see this photo on their Smile Wall.") },
             confirmButton = {
                 TextButton(onClick = { navController.popBackStack() }) {
-                    Text("Done", color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                    Text("Done", color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
                 }
             },
             containerColor = SurfaceHighColor,

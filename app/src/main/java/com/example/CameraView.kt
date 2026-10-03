@@ -50,7 +50,7 @@ fun CameraCapture(
     onImageCaptured: (Uri) -> Unit,
     onError: (ImageCaptureException) -> Unit,
     onClose: () -> Unit,
-    statusLabel: String = "Smart Framing • Ready"
+    statusLabel: String = "Frame the food"
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -179,19 +179,11 @@ fun CameraCapture(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(CircleShape)
-                            .background(accentGreen)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = statusLabel,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
-                        letterSpacing = 0.5.sp
                     )
                 }
             }

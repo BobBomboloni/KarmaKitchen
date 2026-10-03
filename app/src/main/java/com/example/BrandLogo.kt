@@ -65,7 +65,7 @@ fun BrandLogoTile(item: RewardItem, size: Dp, modifier: Modifier = Modifier) {
             else -> Text(
                 text = if (size < 48.dp) item.brand.take(1) else item.brand,
                 color = item.logoColor,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 fontSize = (size.value * (if (size < 48.dp) 0.45f else 0.19f)).sp,
                 maxLines = 1,
                 softWrap = false,

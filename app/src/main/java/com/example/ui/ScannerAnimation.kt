@@ -203,7 +203,6 @@ fun ScannerAnimation(modifier: Modifier = Modifier) {
                 color = TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 0.2.sp
             )
         }
     }

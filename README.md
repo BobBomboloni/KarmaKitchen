@@ -21,3 +21,8 @@ Note: the Gemini key is currently packaged in the APK. Before a public release, 
 The Karma Store shows partner logos on brand-coloured tiles. The bundled McDonald's, Swiggy, Spotify, Samsung, Puma and Nike marks come from [Simple Icons](https://simpleicons.org) (CC0). All brand names and logos are trademarks of their owners and are shown only to illustrate the rewards store in this prototype; a real release would need each partner's permission.
 
 To add or replace a logo, put a file named `logo_<brand>` (for example `logo_nike.png`) in `app/src/main/res/drawable` and match the `logoName` of the reward in `MainActivity.kt`. A reward without a logo file shows its name on a tile.
+
+## Design notes
+The interface avoids the common "template" look: one typeface in real weights, sentence-case labels instead of small capitals, plain-language copy, tonal cards without borders, a single corner radius, and no decorative icon badges. Numbers use tabular figures rather than a monospace font.
+
+Typeface: [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) (SIL Open Font License, see `licenses/`).
