@@ -26,3 +26,12 @@ fun NavController.goToTab(route: String) {
         restoreState = true
     }
 }
+
+/**
+ * The bottom tab to highlight for a screen. Sub-screens opened from the Dashboard (Impact Tiers
+ * and the profile) keep the Dashboard tab lit, so the bar never looks empty.
+ */
+fun highlightedTabRoute(route: String?): String? = when (route) {
+    Screen.Tiers.route, Screen.Profile.route -> Screen.Dashboard.route
+    else -> BottomTabs.firstOrNull { it.route == route }?.route
+}

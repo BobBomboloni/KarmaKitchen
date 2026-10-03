@@ -194,12 +194,11 @@ fun KarmaKitchenApp() {
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
                 NavigationBar(containerColor = SurfaceColor, tonalElevation = 0.dp) {
-                    val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            selected = highlightedTabRoute(currentRoute) == screen.route,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = OnPrimaryGreenContainer,
                                 selectedTextColor = PrimaryGreen,
