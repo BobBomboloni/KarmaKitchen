@@ -36,6 +36,24 @@ import androidx.compose.ui.unit.sp
  */
 @Composable
 fun BrandLogoTile(item: RewardItem, size: Dp, modifier: Modifier = Modifier) {
+    val art = item.art
+    if (art != null) {
+        Box(
+            modifier = modifier
+                .size(size)
+                .clip(RoundedCornerShape(size * 0.26f))
+                .background(item.tileColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(art),
+                contentDescription = item.brand,
+                modifier = Modifier.fillMaxSize(0.78f)
+            )
+        }
+        return
+    }
+
     val context = LocalContext.current
     val logoRes = remember(item.logoName) {
         context.resources.getIdentifier(item.logoName, "drawable", context.packageName)

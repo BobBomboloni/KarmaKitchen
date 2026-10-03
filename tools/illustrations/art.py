@@ -290,6 +290,21 @@ def karma_coin():
     k.append(P("M22,48 A28,28 0 0 1 36,32", stroke=WHITE, sw=3, sa=0.5, cap="round"))
     return k, 96, 96
 
+
+# ================================================================== GIVE-BACK ART (96 x 96)
+def tree(sh=True):
+    k = [shadow(48, 88, 26, 3.6)] if sh else []
+    k.append(P("M43,58 H53 L55,86 H41 Z", fill=BROWN if 'BROWN' in globals() else BREAD_D))
+    k.append(P(circle(48, 38, 24), fill=GREEN_M))
+    k.append(P(circle(32, 52, 17), fill=GREEN))
+    k.append(P(circle(64, 52, 17), fill=GREEN))
+    k.append(P(circle(48, 56, 16), fill=GREEN_M))
+    k.append(P(circle(40, 30, 9), fill=GREEN_L, fa=0.45))
+    k.append(heart(48, 48, 14, "#FFFFFF", fa=0.9))
+    k.append(P(spark(80, 20, 6), fill=AMBER_L))
+    k.append(P(spark(14, 34, 5), fill=GREEN_L))
+    return k, 96, 96
+
 # ================================================================== HERO (176 x 144)
 def hero_food():
     k = [shadow(94, 128, 72, 7, 0.3)]
@@ -307,7 +322,7 @@ ART = {
     "illus_step_smile": polaroid, "illus_step_karma": karma,
     "illus_food_meal": bowl, "illus_food_bread": bread, "illus_food_fruit": apple,
     "illus_food_veg": carrot, "illus_food_pack": pack, "illus_food_dairy": milk,
-    "illus_hero_food": hero_food, "illus_karma_coin": karma_coin,
+    "illus_hero_food": hero_food, "illus_karma_coin": karma_coin, "illus_cause_tree": tree,
     "illus_medal_bronze": lambda: medal("#D4915A"), "illus_medal_silver": lambda: medal("#B7C0C9"),
     "illus_medal_gold": lambda: medal("#F2C14E"), "illus_medal_platinum": lambda: medal("#8FD3E8"),
 }

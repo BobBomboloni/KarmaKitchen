@@ -1119,7 +1119,7 @@ private fun RewardsSection(points: Int, onOpenStore: () -> Unit) {
             contentPadding = PaddingValues(horizontal = ScreenPadding),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(storeRewards.take(4), key = { it.id }) { reward ->
+            items(homeRewards.take(4), key = { it.id }) { reward ->
                 VoucherCard(reward, canAfford = points >= reward.points, onClick = onOpenStore)
             }
         }
