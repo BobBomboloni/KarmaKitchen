@@ -49,7 +49,8 @@ import kotlin.coroutines.suspendCoroutine
 fun CameraCapture(
     onImageCaptured: (Uri) -> Unit,
     onError: (ImageCaptureException) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    statusLabel: String = "Smart Framing • Ready"
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -186,7 +187,7 @@ fun CameraCapture(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Smart Framing • Ready",
+                        text = statusLabel,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,

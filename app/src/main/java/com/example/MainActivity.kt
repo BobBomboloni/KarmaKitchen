@@ -55,6 +55,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -148,16 +150,21 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Store : Screen("store", "Karma Store", Icons.Filled.ShoppingCart)
     object Profile : Screen("profile", "Profile", Icons.Filled.Person)
     object Tiers : Screen("tiers", "Impact Tiers", Icons.Filled.Star)
+    object Smiles : Screen("smiles", "Smiles", Icons.Filled.Mood)
+    object SendSmile : Screen("send_smile/{receivalId}", "Send a Smile", Icons.Filled.Mood) {
+        fun routeFor(receivalId: String) = "send_smile/$receivalId"
+    }
 
 }
 
 @Composable
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
-    val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store)
+    val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store, Screen.Smiles)
     val appContext = LocalContext.current
     var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
     LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
+    remember(appContext) { SmileStore.load(appContext) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -190,7 +197,7 @@ fun KarmaKitchenApp() {
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
             AnimatedVisibility(
-                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route,
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route && currentRoute != Screen.SendSmile.route,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
@@ -258,6 +265,18 @@ fun KarmaKitchenApp() {
             }
             composable(Screen.Tiers.route) {
                 TierListScreen(navController = navController, userProfile = userProfile)
+            }
+            composable(Screen.Smiles.route) {
+                SmileWallScreen(donorName = userProfile.name)
+            }
+            composable(
+                route = Screen.SendSmile.route,
+                arguments = listOf(navArgument("receivalId") { type = NavType.StringType })
+            ) { entry ->
+                SendSmileScreen(
+                    navController = navController,
+                    receivalId = entry.arguments?.getString("receivalId") ?: ""
+                )
             }
         }
     }
@@ -669,6 +688,10 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Text(if (userProfile.karmaPoints < 2000) "Save ${2000 - userProfile.karmaPoints} more points worth of food to reach the next tier!" else "Silver tier unlocked. See Impact Tiers for the next goal!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
+        }
+
+        item {
+            SmileTeaserCard(onClick = { navController.navigate(Screen.Smiles.route) })
         }
 
         item {
@@ -2762,6 +2785,31 @@ fun NgoDashboardScreen(navController: NavController) {
             }
         }
         
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "Received Donations",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            Text(
+                "Open a received donation to send the donor a photo of the people who enjoyed it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        items(sampleReceivals) { receival ->
+            ReceivalCard(
+                receival = receival,
+                onSendSmile = { navController.navigate(Screen.SendSmile.routeFor(receival.id)) }
+            )
+        }
+
         item {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
