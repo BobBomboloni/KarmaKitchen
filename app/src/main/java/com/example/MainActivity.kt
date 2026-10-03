@@ -55,6 +55,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -148,16 +150,21 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Store : Screen("store", "Karma Store", Icons.Filled.ShoppingCart)
     object Profile : Screen("profile", "Profile", Icons.Filled.Person)
     object Tiers : Screen("tiers", "Impact Tiers", Icons.Filled.Star)
+    object Smiles : Screen("smiles", "Smiles", Icons.Filled.Mood)
+    object SendSmile : Screen("send_smile/{receivalId}", "Send a Smile", Icons.Filled.Mood) {
+        fun routeFor(receivalId: String) = "send_smile/$receivalId"
+    }
 
 }
 
 @Composable
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
-    val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store)
+    val items = BottomTabs
     val appContext = LocalContext.current
     var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
     LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
+    remember(appContext) { SmileStore.load(appContext) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -171,15 +178,7 @@ fun KarmaKitchenApp() {
                 exit = scaleOut(tween(150)) + fadeOut(tween(150))
             ) {
                 FloatingActionButton(
-                    onClick = { 
-                        navController.navigate(Screen.Donate.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
+                    onClick = { navController.goToTab(Screen.Donate.route) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = OnPrimaryGreen
                 ) {
@@ -190,17 +189,16 @@ fun KarmaKitchenApp() {
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
             AnimatedVisibility(
-                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route,
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route && currentRoute != Screen.SendSmile.route,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
                 NavigationBar(containerColor = SurfaceColor, tonalElevation = 0.dp) {
-                    val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            selected = highlightedTabRoute(currentRoute) == screen.route,
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = OnPrimaryGreenContainer,
                                 selectedTextColor = PrimaryGreen,
@@ -208,15 +206,7 @@ fun KarmaKitchenApp() {
                                 unselectedIconColor = TextSecondary,
                                 unselectedTextColor = TextSecondary
                             ),
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                            onClick = { navController.goToTab(screen.route) }
                         )
                     }
                 }
@@ -258,6 +248,18 @@ fun KarmaKitchenApp() {
             }
             composable(Screen.Tiers.route) {
                 TierListScreen(navController = navController, userProfile = userProfile)
+            }
+            composable(Screen.Smiles.route) {
+                SmileWallScreen(donorName = userProfile.name)
+            }
+            composable(
+                route = Screen.SendSmile.route,
+                arguments = listOf(navArgument("receivalId") { type = NavType.StringType })
+            ) { entry ->
+                SendSmileScreen(
+                    navController = navController,
+                    receivalId = entry.arguments?.getString("receivalId") ?: ""
+                )
             }
         }
     }
@@ -550,7 +552,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(verticalArrangement = Arrangement.Center) {
                         Text(
-                            text = "GOOD MORNING,",
+                            text = remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) },
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -576,12 +578,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                         .clickable { navController.navigate(Screen.Profile.route) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    ProfileAvatar(initials = initials)
                 }
             }
         }
@@ -669,6 +666,10 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Text(if (userProfile.karmaPoints < 2000) "Save ${2000 - userProfile.karmaPoints} more points worth of food to reach the next tier!" else "Silver tier unlocked. See Impact Tiers for the next goal!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
+        }
+
+        item {
+            SmileTeaserCard(onClick = { navController.goToTab(Screen.Smiles.route) })
         }
 
         item {
@@ -1178,7 +1179,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            "GEMINI 3.5 FOOD INSPECTOR",
+                                            "SMART FOOD CHECK",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = TextPrimary,
@@ -1557,6 +1558,16 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Powered by Gemini", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+                                }
                             }
                         }
                     }
@@ -1775,18 +1786,33 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
     }
 }
 
-data class RewardItem(val id: String, val brand: String, val title: String, val points: Int, val icon: ImageVector, val color: Color)
+/**
+ * A reward partner. [logoName] is the name of a drawable (res/drawable/<logoName>) holding its logo;
+ * if that file is missing the tile shows the brand name instead. With [tintLogo] the logo is
+ * painted in [logoColor] on a [tileColor] tile; without it the artwork is shown as-is on white.
+ */
+data class RewardItem(
+    val id: String,
+    val brand: String,
+    val title: String,
+    val points: Int,
+    val logoName: String,
+    val tileColor: Color,
+    val logoColor: Color,
+    val tintLogo: Boolean = true,
+    val logoScale: Float = 0.62f
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) -> Unit) {
     val rewards = listOf(
-        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, Icons.Filled.Fastfood, RewardMcDonalds),
-        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, Icons.Filled.ShoppingCart, RewardAmazon),
-        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, Icons.Filled.LocalMall, RewardFlipkart),
-        RewardItem("4", "Samsung", "10% Off Coupon", 2000, Icons.Filled.PhoneAndroid, RewardSamsung),
-        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, Icons.Filled.DirectionsRun, RewardSport),
-        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, Icons.Filled.DirectionsRun, RewardSport)
+        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, "logo_mcdonalds", BrandMcDonaldsRed, BrandMcDonaldsGold),
+        RewardItem("2", "Swiggy", "₹500 Gift Card", 1000, "logo_swiggy", BrandSwiggyOrange, BrandWhite),
+        RewardItem("3", "Spotify", "₹500 Gift Card", 1000, "logo_spotify", BrandSpotifyBlack, BrandSpotifyGreen),
+        RewardItem("4", "Samsung", "10% Off Coupon", 2000, "logo_samsung", BrandSamsungBlue, BrandWhite, logoScale = 0.78f),
+        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, "logo_puma", BrandWhite, BrandBlack),
+        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, "logo_nike", BrandWhite, BrandBlack)
     )
 
     var cart by remember { mutableStateOf(listOf<RewardItem>()) }
@@ -1847,9 +1873,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
                             border = BorderStroke(1.dp, OutlineColor)
                         ) {
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(item.color.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                                    Icon(item.icon, contentDescription = null, tint = item.color)
-                                }
+                                BrandLogoTile(item, 40.dp)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.brand, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
@@ -1977,12 +2001,7 @@ fun RewardCard(
         border = BorderStroke(1.dp, OutlineColor)
     ) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(item.color.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(32.dp), tint = item.color)
-            }
+            BrandLogoTile(item, 64.dp)
             Spacer(modifier = Modifier.height(12.dp))
             Text(item.brand, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(item.title, style = MaterialTheme.typography.bodySmall, color = TextSecondary, textAlign = TextAlign.Center)
@@ -2762,6 +2781,31 @@ fun NgoDashboardScreen(navController: NavController) {
             }
         }
         
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "Received Donations",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            Text(
+                "Open a received donation to send the donor a photo of the people who enjoyed it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        items(sampleReceivals) { receival ->
+            ReceivalCard(
+                receival = receival,
+                onSendSmile = { navController.navigate(Screen.SendSmile.routeFor(receival.id)) }
+            )
+        }
+
         item {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
