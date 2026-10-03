@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.example.ui.theme.AccentGold
+import com.example.ui.theme.OnPrimaryGreen
+import com.example.ui.theme.PrimaryGreen
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -83,7 +86,7 @@ fun CameraCapture(
         isTorchOn = newTorchState
     }
 
-    val accentGreen = Color(0xFF00E676)
+    val accentGreen = PrimaryGreen
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         // Camera Preview Feed
@@ -201,7 +204,7 @@ fun CameraCapture(
                 Icon(
                     if (isTorchOn) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
                     contentDescription = "Flash",
-                    tint = if (isTorchOn) Color(0xFFFFD54F) else Color.White,
+                    tint = if (isTorchOn) AccentGold else Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -249,7 +252,7 @@ fun CameraCapture(
                 if (isCapturing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp),
-                        color = Color.Black,
+                        color = OnPrimaryGreen,
                         strokeWidth = 2.5.dp
                     )
                 }

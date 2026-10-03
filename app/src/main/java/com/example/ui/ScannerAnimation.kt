@@ -20,6 +20,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.PrimaryGreen
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.WarningColor
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -50,16 +53,16 @@ fun ScannerAnimation(modifier: Modifier = Modifier) {
 
     // Wavy line color animation (4.8s)
     val waveColor by infiniteTransition.animateColor(
-        initialValue = Color(0xFF2CD457),
-        targetValue = Color(0xFF2CD457), 
+        initialValue = PrimaryGreen,
+        targetValue = PrimaryGreen, 
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 durationMillis = 4800
-                Color(0xFF2CD457) at 0
-                Color(0xFF2CD457) at 2160 // 45%
-                Color(0xFFFFA600) at 2400 // 50%
-                Color(0xFFFFA600) at 4560 // 95%
-                Color(0xFF2CD457) at 4800 // 100%
+                PrimaryGreen at 0
+                PrimaryGreen at 2160 // 45%
+                WarningColor at 2400 // 50%
+                WarningColor at 4560 // 95%
+                PrimaryGreen at 4800 // 100%
             },
             repeatMode = RepeatMode.Restart
         ),
@@ -197,7 +200,7 @@ fun ScannerAnimation(modifier: Modifier = Modifier) {
             // Status text
             Text(
                 text = "Analyzing food$dots",
-                color = Color(0xFFF5EFE2),
+                color = TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.2.sp

@@ -17,18 +17,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.api.ChatMessage
 import com.example.api.chatWithGemini
+import com.example.ui.theme.OnPrimaryGreen
+import com.example.ui.theme.OutlineColor
+import com.example.ui.theme.PrimaryGreen
+import com.example.ui.theme.SurfaceVariantColor
+import com.example.ui.theme.TextPrimary
 import kotlinx.coroutines.launch
-
-val PrimaryGreen = Color(0xFFC5E1A5)
-val SurfaceVariantColor = Color(0xFF1E1E1E)
-val OutlineColor = Color(0xFF333333)
 
 @Composable
 fun DonationChatbot() {
@@ -52,7 +52,7 @@ fun DonationChatbot() {
                     modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(PrimaryGreen),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.SupportAgent, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.SupportAgent, contentDescription = null, tint = OnPrimaryGreen, modifier = Modifier.size(18.dp))
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -112,7 +112,7 @@ fun DonationChatbot() {
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryGreen,
-                        unfocusedBorderColor = OutlineColor
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = {
@@ -146,7 +146,7 @@ fun DonationChatbot() {
                     },
                     modifier = Modifier.background(PrimaryGreen, CircleShape)
                 ) {
-                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = Color.Black)
+                    Icon(Icons.Filled.Send, contentDescription = "Send", tint = OnPrimaryGreen)
                 }
             }
         }
@@ -157,7 +157,7 @@ fun DonationChatbot() {
 fun ChatBubble(msg: ChatMessage) {
     val alignment = if (msg.isUser) Alignment.CenterEnd else Alignment.CenterStart
     val bgColor = if (msg.isUser) PrimaryGreen else SurfaceVariantColor
-    val textColor = if (msg.isUser) Color.Black else Color.White
+    val textColor = if (msg.isUser) OnPrimaryGreen else TextPrimary
     
     Box(
         modifier = Modifier
