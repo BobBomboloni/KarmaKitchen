@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +29,20 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
@@ -146,7 +161,11 @@ fun KarmaKitchenApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            if (currentRoute == Screen.Dashboard.route) {
+            AnimatedVisibility(
+                visible = currentRoute == Screen.Dashboard.route,
+                enter = scaleIn(tween(250)) + fadeIn(tween(250)),
+                exit = scaleOut(tween(150)) + fadeOut(tween(150))
+            ) {
                 FloatingActionButton(
                     onClick = { 
                         navController.navigate(Screen.Donate.route) {
@@ -166,7 +185,11 @@ fun KarmaKitchenApp() {
         },
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
-            if (currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route) {
+            AnimatedVisibility(
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route,
+                enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
+                exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
+            ) {
                 NavigationBar {
                     val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
@@ -192,7 +215,11 @@ fun KarmaKitchenApp() {
         NavHost(
             navController = navController,
             startDestination = Screen.RoleSelection.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 12 } },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(300)) { it / 12 } }
         ) {
             composable(Screen.RoleSelection.route) { RoleSelectionScreen(navController) }
             composable(Screen.NgoDashboard.route) { NgoDashboardScreen(navController) }
@@ -567,7 +594,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             Icon(Icons.Filled.Stars, contentDescription = null, tint = PrimaryGreen)
                         }
                         Column {
-                            Text("%,d".format(userProfile.karmaPoints), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = PrimaryGreen)
+                            val animatedKarma by animateIntAsState(userProfile.karmaPoints, tween(800), label = "karma")
+                            Text("%,d".format(animatedKarma), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = PrimaryGreen)
                             Text("KARMA POINTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
@@ -615,8 +643,9 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     
+                    val animatedTierProgress by animateFloatAsState((userProfile.karmaPoints / 2000f).coerceIn(0f, 1f), tween(800), label = "tierProgress")
                     LinearProgressIndicator(
-                        progress = { (userProfile.karmaPoints / 2000f).coerceIn(0f, 1f) },
+                        progress = { animatedTierProgress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -644,8 +673,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                items(dummyNgos) { ngo ->
-                    NgoNeedCard(ngo)
+                itemsIndexed(dummyNgos) { index, ngo ->
+                    Box(Modifier.appearOnScreen(index)) { NgoNeedCard(ngo) }
                 }
             }
         }
@@ -656,8 +685,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(dummyFeed) { feedItem ->
-            LiveFeedCard(feedItem)
+        itemsIndexed(dummyFeed) { index, feedItem ->
+            Box(Modifier.appearOnScreen(index)) { LiveFeedCard(feedItem) }
         }
 
         item {
@@ -665,8 +694,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             Text("Recent Donations", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
         }
 
-        items(recentDonations) { donation ->
-            DonationItemCard(donation)
+        itemsIndexed(recentDonations) { index, donation ->
+            Box(Modifier.appearOnScreen(index)) { DonationItemCard(donation) }
         }
     }
 }
@@ -1094,15 +1123,25 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
             Text("Create Donation", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
         }
         Spacer(modifier = Modifier.height(8.dp))
+        val animatedStepProgress by animateFloatAsState(step / 3f, tween(400), label = "stepProgress")
         LinearProgressIndicator(
-            progress = { step / 3f },
+            progress = { animatedStepProgress },
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
             color = PrimaryGreen,
             trackColor = SurfaceVariantColor
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        when (step) {
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                val forward = targetState > initialState
+                (fadeIn(tween(250)) + slideInHorizontally(tween(300)) { if (forward) it / 8 else -it / 8 }) togetherWith
+                    (fadeOut(tween(150)) + slideOutHorizontally(tween(300)) { if (forward) -it / 8 else it / 8 })
+            },
+            label = "donationStep"
+        ) { currentStep ->
+        when (currentStep) {
             1 -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -1708,6 +1747,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                     }
                 }
             }
+        }
         }
     }
 }
