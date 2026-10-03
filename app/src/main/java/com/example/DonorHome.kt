@@ -385,14 +385,20 @@ private fun HomeGreeting(name: String) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Unit, onStore: () -> Unit) {
-    val pageCount = 3
-    val pagerState = rememberPagerState(pageCount = { pageCount })
+    // The pager has many "virtual" pages so it can keep sliding forward and loop without ever
+    // rewinding across the slides. Slide number = page % slideCount.
+    val slideCount = 3
+    val virtualPages = slideCount * 1000
+    val pagerState = rememberPagerState(
+        initialPage = virtualPages / 2 - (virtualPages / 2) % slideCount,
+        pageCount = { virtualPages }
+    )
 
     // Move on every few seconds; the timer restarts whenever the page changes (by swipe or by itself).
     LaunchedEffect(pagerState.currentPage) {
         delay(6000)
         while (pagerState.isScrollInProgress) delay(500)
-        pagerState.animateScrollToPage((pagerState.currentPage + 1) % pageCount)
+        pagerState.animateScrollToPage(pagerState.currentPage + 1)
     }
 
     Column {
@@ -401,7 +407,7 @@ private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Uni
             contentPadding = PaddingValues(horizontal = ScreenPadding),
             pageSpacing = 12.dp
         ) { page ->
-            when (page) {
+            when (page % slideCount) {
                 0 -> DonateSlide(onDonate)
                 1 -> RewardsSlide(points, onStore)
                 else -> FactSlide(facts)
@@ -409,8 +415,8 @@ private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Uni
         }
         Spacer(Modifier.height(12.dp))
         PagerDots(
-            count = pageCount,
-            current = pagerState.currentPage,
+            count = slideCount,
+            current = pagerState.currentPage % slideCount,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
     }
@@ -550,7 +556,7 @@ private fun FactSlide(facts: FoodWasteFacts) {
                 color = OnInfoContainer
             )
             Text(
-                text = "%,d kg".format((facts.indiaWasteKgPerSec * seconds).toLong()),
+                text = "%,d kg".format((facts.indiaWasteKgPerSec * seconds / 100).toLong() * 100),
                 style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
                 color = InfoColor
             )
@@ -581,13 +587,13 @@ private fun FactSlide(facts: FoodWasteFacts) {
     }
 }
 
-/** Seconds since the app process started; ticks a few times a second for the big counter. */
+/** Seconds since the app process started; ticks once a second for the big counter. */
 @Composable
 private fun rememberElapsedSeconds(): State<Double> = produceState(
     initialValue = (System.currentTimeMillis() - AppStartTime) / 1000.0
 ) {
     while (true) {
-        delay(200)
+        delay(1000)
         value = (System.currentTimeMillis() - AppStartTime) / 1000.0
     }
 }
