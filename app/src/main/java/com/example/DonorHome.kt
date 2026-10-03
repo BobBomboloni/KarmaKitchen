@@ -394,11 +394,15 @@ private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Uni
         pageCount = { virtualPages }
     )
 
-    // Move on every few seconds; the timer restarts whenever the page changes (by swipe or by itself).
-    LaunchedEffect(pagerState.currentPage) {
-        delay(6000)
-        while (pagerState.isScrollInProgress) delay(500)
-        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+    // Slide on every few seconds. The loop must NOT be restarted when the page changes: doing that
+    // cancelled the slide animation halfway and left the banner stuck between two slides.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(6000)
+            if (!pagerState.isScrollInProgress) {
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
     }
 
     Column {
