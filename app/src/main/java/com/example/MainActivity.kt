@@ -251,11 +251,11 @@ fun WelcomeScreen(navController: NavController) {
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = "KarmaKitchen",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.primary
+                Spacer(modifier = Modifier.height(4.dp))
+                KarmaKitchenLogoText(
+                    fontSize = 36.sp,
+                    textColor = MaterialTheme.colorScheme.onBackground,
+                    accentColor = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 
@@ -438,6 +438,36 @@ fun WelcomeScreen(navController: NavController) {
 }
 
 @Composable
+fun KarmaKitchenLogoText(
+    modifier: Modifier = Modifier,
+    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
+    textColor: Color = Color.White,
+    accentColor: Color = PrimaryGreen
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Karma",
+            fontFamily = PlusJakartaSans,
+            fontWeight = FontWeight.Black,
+            fontSize = fontSize,
+            color = textColor,
+            letterSpacing = (-0.5).sp
+        )
+        Text(
+            text = "Kitchen",
+            fontFamily = PlusJakartaSans,
+            fontWeight = FontWeight.Black,
+            fontSize = fontSize,
+            color = accentColor,
+            letterSpacing = (-0.5).sp
+        )
+    }
+}
+
+@Composable
 fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(id = R.drawable.ic_karma_logo),
@@ -535,7 +565,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             Icon(Icons.Filled.Stars, contentDescription = null, tint = PrimaryGreen)
                         }
                         Column {
-                            Text("%,d".format(userProfile.karmaPoints), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = PrimaryGreen)
+                            Text("%,d".format(userProfile.karmaPoints), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = PrimaryGreen)
                             Text("KARMA POINTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
@@ -558,7 +588,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             Icon(Icons.Filled.Favorite, contentDescription = null, tint = MealsTextPrimary)
                         }
                         Column {
-                            Text("42", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = MealsTextPrimary)
+                            Text("42", style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = MealsTextPrimary)
                             Text("MEALS SAVED", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
@@ -578,8 +608,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("1,240 KP", style = MaterialTheme.typography.bodySmall, color = PrimaryGreen, fontWeight = FontWeight.Bold)
-                        Text("2,000 KP (Silver)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text("1,240 KP", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                        Text("2,000 KP (Silver)", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = TextSecondary)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     
@@ -748,7 +778,7 @@ fun DonationItemCard(item: DonationItem) {
                 Text(item.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Text("${item.date} • ${item.status}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
-            Text("+${item.points} KP", style = MaterialTheme.typography.titleSmall, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+            Text("+${item.points} KP", style = MaterialTheme.typography.titleSmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -1313,7 +1343,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                     Text("QUANTITY", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                                                 }
                                                 Spacer(modifier = Modifier.height(4.dp))
-                                                Text(res.quantity, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                                Text(res.quantity, style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold, color = TextPrimary)
                                             }
                                         }
 
@@ -1330,7 +1360,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                     Text("SHELF LIFE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                                                 }
                                                 Spacer(modifier = Modifier.height(4.dp))
-                                                Text(res.shelfLife, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                                Text(res.shelfLife, style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold, color = TextPrimary)
                                             }
                                         }
 
@@ -1628,7 +1658,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     Text("Impact Reward", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("+$calculatedPoints Karma Points", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                                Text("+$calculatedPoints Karma Points", style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold, color = PrimaryGreen)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("Based on quantity ($servings) and quality (${if(qualityText.isBlank()) "Standard" else qualityText}).", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                                 
@@ -1768,7 +1798,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
                                     Text(item.brand, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                                     Text(item.title, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                                 }
-                                Text("${item.points} KP", fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                                Text("${item.points} KP", fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, color = PrimaryGreen)
                                 IconButton(onClick = { 
                                     val newCart = cart.toMutableList()
                                     newCart.remove(item)
@@ -1785,7 +1815,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
             Divider(modifier = Modifier.padding(vertical = 16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("$totalPoints KP", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                Text("$totalPoints KP", style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold, color = PrimaryGreen)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
@@ -1819,7 +1849,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
         ) {
             Column {
                 Text("Karma Store", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text("You have %,d KP".format(userProfile.karmaPoints), style = MaterialTheme.typography.bodyLarge, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                Text("You have %,d KP".format(userProfile.karmaPoints), style = MaterialTheme.typography.bodyLarge.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
             }
             
             BadgedBox(
@@ -1932,7 +1962,7 @@ fun RewardCard(
                     contentPadding = PaddingValues(0.dp),
                     enabled = canAdd
                 ) {
-                    Text("${item.points} KP", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text("${item.points} KP", style = MaterialTheme.typography.bodyMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2134,7 +2164,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "%,d KP".format(userProfile.karmaPoints),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.copy(fontFamily = JetBrainsMono),
                             color = TextPrimary
                         )
                     }
@@ -2215,7 +2245,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                             }
                             Text(
                                 text = rangeText,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono),
                                 color = TextSecondary,
                                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
                             )
@@ -2366,7 +2396,7 @@ fun androidx.compose.foundation.layout.RowScope.FactItem(title: String, value: S
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
         Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.height(4.dp))
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, textAlign = TextAlign.Center)
+        Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer, textAlign = TextAlign.Center)
         Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f), textAlign = TextAlign.Center)
     }
 }
@@ -2811,7 +2841,7 @@ fun NgoMetricCard(title: String, value: String, modifier: Modifier = Modifier) {
             .padding(12.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+        Text(value, style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMono), color = Color.White, fontWeight = FontWeight.Black)
         Spacer(modifier = Modifier.height(4.dp))
         Text(title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
     }
