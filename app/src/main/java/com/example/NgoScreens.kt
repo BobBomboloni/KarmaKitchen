@@ -1277,7 +1277,7 @@ private fun StockCard(item: StockItem, onDone: () -> Unit, modifier: Modifier = 
 @Composable
 fun NgoSmilesScreen(navController: NavController) {
     val waiting = NgoState.awaitingSmile
-    val sent = SmileStore.smiles.filter { it.ngoName == NGO_NAME }
+    val sent = SmileStore.smiles.filter { it.isSentByThisNgo() }
 
     LazyColumn(
         modifier = Modifier
