@@ -357,6 +357,8 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                     locating = locating,
                     onBack = { step = 2 },
                     onConfirm = {
+                        val id = java.util.UUID.randomUUID().toString()
+                        val category = guessCategory(draft.title)
                         DonationLog.add(
                             DonationItem(
                                 title = draft.title.trim(),
@@ -364,9 +366,28 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                 date = "Just now",
                                 status = STATUS_POSTED,
                                 points = draft.coins,
-                                category = guessCategory(draft.title),
+                                category = category,
                                 etaMinutes = 25,
-                                stage = 0
+                                stage = 0,
+                                id = id
+                            )
+                        )
+                        // The receiver side (another role on this phone) sees it as a new offer.
+                        NgoState.post(
+                            NgoDonation(
+                                id = id,
+                                donor = userProfile.name.trim().ifBlank { "A donor" },
+                                title = draft.title.trim(),
+                                servings = servingsCount(draft.servings),
+                                isVeg = draft.isVeg,
+                                shelfLife = draft.shelfLife.trim(),
+                                distanceKm = 1.4,
+                                pickup = draft.window.label,
+                                category = category,
+                                stage = OfferStage.Offered,
+                                note = draft.note.trim(),
+                                photo = draft.photo?.toString(),
+                                fromDonor = true
                             )
                         )
                         step = 4
@@ -706,7 +727,7 @@ private fun ViewfinderCard(onClick: () -> Unit) {
 }
 
 @Composable
-private fun ViewfinderCorners(color: Color, modifier: Modifier = Modifier) {
+internal fun ViewfinderCorners(color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val length = 30.dp.toPx()
         val inset = 16.dp.toPx()

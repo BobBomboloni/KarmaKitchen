@@ -152,7 +152,11 @@ internal fun medalFor(tier: String): Int = when (tier) {
 fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile) {
     val facts by rememberFoodWasteFacts()
     var selectedCategory by remember { mutableStateOf<FoodCategory?>(null) }
-    val ngos = remember(selectedCategory) { ngosAccepting(selectedCategory) }
+    // The NGO on this phone can broadcast an urgent need; if it does, it shows up first.
+    val broadcast = NgoState.broadcastRequest()
+    val ngos = remember(selectedCategory, broadcast) {
+        ngosAccepting(selectedCategory, listOfNotNull(broadcast) + sampleNgoRequests)
+    }
     val smiles = SmileStore.smiles.toList()
     // Donations made in this session (from the Donate screen) come first.
     val donations = DonationLog.submitted.toList() + recentDonations

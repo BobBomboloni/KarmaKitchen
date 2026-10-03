@@ -305,6 +305,36 @@ def tree(sh=True):
     k.append(P(spark(14, 34, 5), fill=GREEN_L))
     return k, 96, 96
 
+
+# ================================================================== ROLE ART (120 x 120)
+def ngo_kitchen():
+    """A community kitchen: the receiver's picture."""
+    k = [shadow(60, 108, 46, 5)]
+    # chimney with steam
+    k.append(P(rrect(86, 22, 12, 24, 2), fill=CLAY_D))
+    k.append(P("M92,20 c-3,-4 3,-6 0,-11", stroke=WHITE, sw=3, sa=0.5, cap="round"))
+    # walls
+    k.append(P(rrect(16, 52, 88, 54, 6), fill=CREAM))
+    k.append(P(rrect(16, 92, 88, 14, (0, 0, 6, 6)), fill=CREAM_D))
+    # roof
+    k.append(P("M8,56 L60,16 L112,56 Z", fill=CLAY))
+    k.append(P("M8,56 L60,16 L60,56 Z", fill=CLAY_L, fa=0.45))
+    k.append(P(rrect(8, 52, 104, 7, 3), fill=CLAY_D))
+    # heart sign in the gable
+    k.append(P(circle(60, 40, 13), fill=WHITE))
+    k.append(heart(60, 41, 17, CORAL))
+    # door and windows
+    k.append(P(rrect(49, 72, 22, 34, (11, 11, 0, 0)), fill=GREEN_D))
+    k.append(P(circle(66, 91, 1.8), fill=AMBER_L))
+    for x in (24, 84):
+        k.append(P(rrect(x, 68, 16, 16, 3), fill=BLUE_L))
+        k.append(P("M%s,68 V84 M%s,76 H%s" % (f(x + 8), f(x), f(x + 16)), stroke=CREAM, sw=2))
+    # a bush and a bowl on the step
+    k.append(P(circle(108, 100, 9), fill=GREEN_M))
+    k.append(P(circle(100, 104, 7), fill=GREEN))
+    k.append(P(spark(14, 28, 6), fill=AMBER_L))
+    return k, 120, 120
+
 # ================================================================== HERO (176 x 144)
 def hero_food():
     k = [shadow(94, 128, 72, 7, 0.3)]
@@ -322,7 +352,7 @@ ART = {
     "illus_step_smile": polaroid, "illus_step_karma": karma,
     "illus_food_meal": bowl, "illus_food_bread": bread, "illus_food_fruit": apple,
     "illus_food_veg": carrot, "illus_food_pack": pack, "illus_food_dairy": milk,
-    "illus_hero_food": hero_food, "illus_karma_coin": karma_coin, "illus_cause_tree": tree,
+    "illus_hero_food": hero_food, "illus_karma_coin": karma_coin, "illus_cause_tree": tree, "illus_role_ngo": ngo_kitchen,
     "illus_medal_bronze": lambda: medal("#D4915A"), "illus_medal_silver": lambda: medal("#B7C0C9"),
     "illus_medal_gold": lambda: medal("#F2C14E"), "illus_medal_platinum": lambda: medal("#8FD3E8"),
 }

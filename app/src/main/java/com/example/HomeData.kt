@@ -81,7 +81,9 @@ data class DonationItem(
     val volunteer: String? = null,
     val etaMinutes: Int? = null,
     /** 0 = posted and waiting for a volunteer, 1 = picked up and on the way, 2 = delivered. */
-    val stage: Int = 1
+    val stage: Int = 1,
+    /** Links a donation made on this phone to the NGO's copy of it. */
+    val id: String = java.util.UUID.randomUUID().toString()
 ) {
     val inTransit: Boolean get() = status != STATUS_DELIVERED
 }

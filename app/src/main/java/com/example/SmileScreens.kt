@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -267,50 +269,6 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
 // NGO / receiver side
 // -----------------------------------------------------------------------------
 
-/** One received donation in the NGO dashboard, with the button to send a smile. */
-@Composable
-fun ReceivalCard(receival: Receival, onSendSmile: () -> Unit) {
-    val smileSent = SmileStore.hasSmileFor(receival.id)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceColor)
-            .padding(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(receival.title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Received ${receival.receivedText} • ${receival.servings} servings",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        if (smileSent) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = SuccessColor, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Smile sent to the donor", color = SuccessColor, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            }
-        } else {
-            Button(
-                onClick = onSendSmile,
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = SecondaryAmber, contentColor = OnSecondaryAmber)
-            ) {
-                Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Send a smile", fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
 /** Camera with a permission prompt in front of it. */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -369,7 +327,7 @@ fun CameraGate(onCaptured: (Uri) -> Unit, onCancel: () -> Unit, onError: (String
 /** The NGO takes or picks a photo for one received donation and sends it to the donor. */
 @Composable
 fun SendSmileScreen(navController: NavController, receivalId: String) {
-    val receival = sampleReceivals.firstOrNull { it.id == receivalId }
+    val receival = NgoState.receival(receivalId)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -469,20 +427,32 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceColor)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(receival.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text(
-                        "Received ${receival.receivedText} • ${receival.servings} servings",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                }
+            val category = guessCategory(receival.title)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(category.tint().copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(painterResource(category.art()), contentDescription = null, modifier = Modifier.size(34.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(receival.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text(
+                    "Received ${receival.receivedText} · ${receival.servings} servings",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
             }
         }
 
@@ -505,9 +475,10 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
+                ViewfinderCorners(SecondaryAmber.copy(alpha = 0.85f), Modifier.fillMaxSize())
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-                    Icon(Icons.Filled.AddAPhoto, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(40.dp))
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Image(painterResource(R.drawable.illus_step_camera), contentDescription = null, modifier = Modifier.size(88.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Add a photo of the people enjoying the food",
                         style = MaterialTheme.typography.bodyMedium,

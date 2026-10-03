@@ -143,7 +143,10 @@ data class UserProfile(
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object RoleSelection : Screen("role_selection", "Role Selection", Icons.Filled.Star)
-    object NgoDashboard : Screen("ngo_dashboard", "NGO Dashboard", Icons.Filled.Home)
+    object NgoDashboard : Screen("ngo_dashboard", "Home", Icons.Filled.Home)
+    object NgoOffers : Screen("ngo_offers", "Offers", Icons.Filled.Inbox)
+    object NgoStock : Screen("ngo_stock", "Stock", Icons.Filled.Inventory2)
+    object NgoSmiles : Screen("ngo_smiles", "Smiles", Icons.Filled.Mood)
     object Welcome : Screen("welcome", "Welcome", Icons.Filled.Star)
     object Dashboard : Screen("dashboard", "Home", Icons.Filled.Home)
     object Donate : Screen("donate", "Donate", Icons.Filled.AddCircle)
@@ -160,14 +163,28 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 @Composable
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
-    val items = BottomTabs
     val appContext = LocalContext.current
     var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
     LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
     remember(appContext) { SmileStore.load(appContext) }
 
+    // Coins the NGO has confirmed (when it records a delivery) are added to the donor's balance.
+    val pendingCredits = DonationLog.pendingCredits
+    LaunchedEffect(pendingCredits.size) {
+        if (pendingCredits.isNotEmpty()) {
+            val earned = pendingCredits.sum()
+            pendingCredits.clear()
+            userProfile = userProfile.copy(karmaPoints = userProfile.karmaPoints + earned)
+        }
+    }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // The bar shows the donor tabs or the receiver tabs. It keeps the last set while it slides away.
+    val tabHolder = remember { arrayOf<List<Screen>>(BottomTabs) }
+    tabsForRoute(currentRoute)?.let { tabHolder[0] = it }
+    val items = tabHolder[0]
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -189,14 +206,23 @@ fun KarmaKitchenApp() {
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
             AnimatedVisibility(
-                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route && currentRoute != Screen.SendSmile.route,
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.SendSmile.route,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
                 NavigationBar(containerColor = SurfaceColor, tonalElevation = 0.dp) {
                     items.forEach { screen ->
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
+                            icon = {
+                                val waiting = if (screen.route == Screen.NgoOffers.route) NgoState.offers.size else 0
+                                if (waiting > 0) {
+                                    BadgedBox(
+                                        badge = { Badge(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen) { Text("$waiting") } }
+                                    ) { Icon(screen.icon, contentDescription = screen.title) }
+                                } else {
+                                    Icon(screen.icon, contentDescription = screen.title)
+                                }
+                            },
                             label = { Text(screen.title) },
                             selected = highlightedTabRoute(currentRoute) == screen.route,
                             colors = NavigationBarItemDefaults.colors(
@@ -224,6 +250,9 @@ fun KarmaKitchenApp() {
         ) {
             composable(Screen.RoleSelection.route) { RoleSelectionScreen(navController) }
             composable(Screen.NgoDashboard.route) { NgoDashboardScreen(navController) }
+            composable(Screen.NgoOffers.route) { NgoOffersScreen(navController) }
+            composable(Screen.NgoStock.route) { NgoStockScreen(navController) }
+            composable(Screen.NgoSmiles.route) { NgoSmilesScreen(navController) }
             composable(Screen.Welcome.route) { WelcomeScreen(navController) }
             composable(Screen.Dashboard.route) { DonorDashboardScreen(navController, userProfile) }
             composable(Screen.Donate.route) { 
@@ -754,417 +783,31 @@ fun RoleSelectionScreen(navController: NavController) {
             color = TextSecondary
         )
         
-        Spacer(modifier = Modifier.height(64.dp))
+        Spacer(modifier = Modifier.height(40.dp))
         
-        // Donor Button
-        Button(
-            onClick = { navController.navigate(Screen.Welcome.route) }, // Or Dashboard directly
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = SuccessColor)
-        ) {
-            Text(
-                "I'm donating food",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = OnPrimaryGreen
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // NGO Button
-        Button(
-            onClick = { navController.navigate(Screen.NgoDashboard.route) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = WarningColor)
-        ) {
-            Text(
-                "I'm receiving food (NGO)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = OnSecondaryAmber
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-fun NgoDashboardScreen(navController: NavController) {
-    var isBroadcasting by remember { mutableStateOf(false) }
-    var isAccepting by remember { mutableStateOf(true) }
-
-    val coroutineScope = rememberCoroutineScope()
-    var isAnalyzing by remember { mutableStateOf(false) }
-    var analysisResult by remember { mutableStateOf<IntakeAnalysisResult?>(null) }
-    var showResultDialog by remember { mutableStateOf(false) }
-    var scanError by remember { mutableStateOf<String?>(null) }
-    
-    val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: android.graphics.Bitmap? ->
-        if (bitmap != null) {
-            isAnalyzing = true
-            coroutineScope.launch {
-                try {
-                    val base64 = bitmapToBase64(bitmap)
-                    analysisResult = verifyIntakeWithGemini(base64)
-                    showResultDialog = true
-                } catch (e: Exception) {
-                    // Never fabricate a "verified" result: ask for a manual inspection instead.
-                    analysisResult = null
-                    showResultDialog = false
-                    scanError = "AI check unavailable. Please inspect the food manually before accepting it."
-                } finally {
-                    isAnalyzing = false
-                }
-            }
-        }
-    }
-
-    val mockDeliveries = listOf(
-        Triple("20 Servings - Mixed Veg", "Driver ETA: 12 Mins", "1.2 km away"),
-        Triple("50 Assorted Breads", "Driver ETA: 25 Mins", "3.4 km away")
-    )
-    
-    val mockInventory = listOf(
-        Triple("Whole Wheat Flour (Atta) - 10kg", "Expires in 3 months", "Fresh"),
-        Triple("Fresh Tomatoes & Onions - 5kg", "Expires in 3 days", "Fresh"),
-        Triple("Cooked Basmati Rice & Dal", "Expires in 4 hours", "Expiring Soon"),
-        Triple("Catering Paneer Sabzi", "Expired 2 hours ago", "Expired")
-    )
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundColor),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        // Header
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_karma_logo),
-                        contentDescription = "KarmaKitchen Logo",
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) }, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                        Text("Navrachana Community", style = MaterialTheme.typography.titleLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceVariantColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Person, contentDescription = "Profile", tint = TextPrimary)
-                }
-            }
-        }
-
-        // Metrics Row
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                NgoMetricCard(title = "Meals today", value = "342", modifier = Modifier.weight(1f))
-                NgoMetricCard(title = "Capacity", value = "85%", modifier = Modifier.weight(1f))
-                NgoMetricCard(title = "Active", value = "3", modifier = Modifier.weight(1f))
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Action Center
-        item {
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text("Availability", style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                // Broadcast Toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(SurfaceColor)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Urgent need broadcast", style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text(if (isBroadcasting) "Broadcasting to local donors" else "Currently inactive", style = MaterialTheme.typography.bodyMedium, color = if (isBroadcasting) WarningColor else TextSecondary)
-                    }
-                    androidx.compose.material3.Switch(
-                        checked = isBroadcasting,
-                        onCheckedChange = { isBroadcasting = it },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = WarningColor)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Accepting Toggle
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(SurfaceColor)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Accepting Donations", style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text("Manage warehouse capacity", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    }
-                    androidx.compose.material3.Switch(
-                        checked = isAccepting,
-                        onCheckedChange = { isAccepting = it },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = SuccessColor)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Incoming Radar
-        item {
-            Text(
-                "On the way",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-        
-        items(mockDeliveries.size) { index ->
-            val delivery = mockDeliveries[index]
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceColor)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(delivery.first, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text("${delivery.second} • ${delivery.third}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    }
-                }
-                // Actions inside card
-                Button(
-                    onClick = { 
-                        if (cameraPermissionState.status.isGranted) {
-                            cameraLauncher.launch(null) 
-                        } else {
-                            cameraPermissionState.launchPermissionRequest()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp, topStart = 0.dp, topEnd = 0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SuccessColor)
-                ) {
-                    Text("Accept and log intake", color = OnPrimaryGreen, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-        
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                "Received donations",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            Text(
-                "Open a received donation to send the donor a photo of the people who enjoyed it.",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        items(sampleReceivals) { receival ->
-            ReceivalCard(
-                receival = receival,
-                onSendSmile = { navController.navigate(Screen.SendSmile.routeFor(receival.id)) }
-            )
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                "In stock",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-        
-        items(mockInventory.size) { index ->
-            val inventory = mockInventory[index]
-            val statusColor = when(inventory.third) {
-                "Fresh" -> SuccessColor
-                "Expiring Soon" -> WarningColor
-                else -> DangerColor // Red for expired
-            }
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceColor)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(inventory.first, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                    Text(inventory.second, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                }
-                
-                // Status Chip
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(statusColor.copy(alpha = 0.2f))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(inventory.third, color = statusColor, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-    }
-
-    if (isAnalyzing) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { },
-            title = { Text("Checking the food", color = TextPrimary) },
-            text = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(color = SuccessColor)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("AI is verifying food freshness...", color = TextSecondary)
-                }
-            },
-            confirmButton = { },
-            containerColor = SurfaceHighColor,
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary
+        RoleCard(
+            title = "I'm donating food",
+            subtitle = "Share surplus food and earn karma coins",
+            art = R.drawable.illus_food_meal,
+            tint = PrimaryGreen,
+            onClick = { navController.navigate(Screen.Welcome.route) }
         )
-    }
 
-    if (scanError != null) {
-        AlertDialog(
-            onDismissRequest = { scanError = null },
-            title = { Text("Could not verify food") },
-            text = { Text(scanError ?: "") },
-            confirmButton = { TextButton(onClick = { scanError = null }) { Text("OK") } }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RoleCard(
+            title = "I'm receiving food",
+            subtitle = "For NGOs, shelters and community kitchens",
+            art = R.drawable.illus_role_ngo,
+            tint = SecondaryAmber,
+            onClick = { navController.navigate(Screen.NgoDashboard.route) }
         )
-    }
 
-    if (showResultDialog && analysisResult != null) {
-        val res = analysisResult!!
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showResultDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (res.verifiedMatch) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = if (res.verifiedMatch) SuccessColor else WarningColor,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Intake recorded", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            text = {
-                Column {
-                    Text("The AI has verified this donation against the donor's original listing.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Freshness: ${res.freshness}", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Expiration: ${res.estimatedExpiration}", color = WarningColor, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Storage: ${res.storageInstructions}", color = SuccessColor, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Automated Sorting:", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.horizontalScroll(rememberScrollState())
-                    ) {
-                        res.dietaryTags.forEach { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SuccessColor.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(tag, color = SuccessColor, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showResultDialog = false }) {
-                    Text("Done", color = SuccessColor, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            containerColor = SurfaceHighColor
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "You can switch roles any time.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextTertiary
         )
-    }
-}
-
-@Composable
-fun NgoMetricCard(title: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceColor)
-            .padding(12.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        Text(value, style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"), color = TextPrimary, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(title, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
     }
 }
