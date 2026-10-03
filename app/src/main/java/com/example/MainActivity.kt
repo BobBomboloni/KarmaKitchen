@@ -1179,7 +1179,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            "GEMINI 3.5 FOOD INSPECTOR",
+                                            "SMART FOOD CHECK",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = TextPrimary,
@@ -1558,6 +1558,16 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Powered by Gemini", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+                                }
                             }
                         }
                     }
@@ -1798,8 +1808,8 @@ data class RewardItem(
 fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) -> Unit) {
     val rewards = listOf(
         RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, "logo_mcdonalds", BrandMcDonaldsRed, BrandMcDonaldsGold),
-        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, "logo_amazon", BrandAmazonNavy, BrandWhite, tintLogo = false),
-        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, "logo_flipkart", BrandFlipkartBlue, BrandWhite, tintLogo = false),
+        RewardItem("2", "Swiggy", "₹500 Gift Card", 1000, "logo_swiggy", BrandSwiggyOrange, BrandWhite),
+        RewardItem("3", "Spotify", "₹500 Gift Card", 1000, "logo_spotify", BrandSpotifyBlack, BrandSpotifyGreen),
         RewardItem("4", "Samsung", "10% Off Coupon", 2000, "logo_samsung", BrandSamsungBlue, BrandWhite, logoScale = 0.78f),
         RewardItem("5", "Puma", "₹1000 Gift Card", 2500, "logo_puma", BrandWhite, BrandBlack),
         RewardItem("6", "Nike", "₹2500 Gift Card", 5000, "logo_nike", BrandWhite, BrandBlack)

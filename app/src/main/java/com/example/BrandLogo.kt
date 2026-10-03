@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
  * A partner's logo on a rounded tile in its brand colors.
  *
  * Logos are drawables named by [RewardItem.logoName]. To add or replace one, drop a file with that
- * exact name into app/src/main/res/drawable (for example logo_amazon.png); no code change is needed.
+ * exact name into app/src/main/res/drawable (for example logo_nike.png); no code change is needed.
  * Until a logo exists, the tile shows the brand name (or just its first letter on small tiles).
  *
  * The bundled McDonald's, Samsung, Puma and Nike marks come from Simple Icons (CC0). All brand
