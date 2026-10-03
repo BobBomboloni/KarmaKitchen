@@ -1776,18 +1776,33 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
     }
 }
 
-data class RewardItem(val id: String, val brand: String, val title: String, val points: Int, val icon: ImageVector, val color: Color)
+/**
+ * A reward partner. [logoName] is the name of a drawable (res/drawable/<logoName>) holding its logo;
+ * if that file is missing the tile shows the brand name instead. With [tintLogo] the logo is
+ * painted in [logoColor] on a [tileColor] tile; without it the artwork is shown as-is on white.
+ */
+data class RewardItem(
+    val id: String,
+    val brand: String,
+    val title: String,
+    val points: Int,
+    val logoName: String,
+    val tileColor: Color,
+    val logoColor: Color,
+    val tintLogo: Boolean = true,
+    val logoScale: Float = 0.62f
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) -> Unit) {
     val rewards = listOf(
-        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, Icons.Filled.Fastfood, RewardMcDonalds),
-        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, Icons.Filled.ShoppingCart, RewardAmazon),
-        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, Icons.Filled.LocalMall, RewardFlipkart),
-        RewardItem("4", "Samsung", "10% Off Coupon", 2000, Icons.Filled.PhoneAndroid, RewardSamsung),
-        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, Icons.Filled.DirectionsRun, RewardSport),
-        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, Icons.Filled.DirectionsRun, RewardSport)
+        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, "logo_mcdonalds", BrandMcDonaldsRed, BrandMcDonaldsGold),
+        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, "logo_amazon", BrandAmazonNavy, BrandWhite, tintLogo = false),
+        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, "logo_flipkart", BrandFlipkartBlue, BrandWhite, tintLogo = false),
+        RewardItem("4", "Samsung", "10% Off Coupon", 2000, "logo_samsung", BrandSamsungBlue, BrandWhite, logoScale = 0.78f),
+        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, "logo_puma", BrandWhite, BrandBlack),
+        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, "logo_nike", BrandWhite, BrandBlack)
     )
 
     var cart by remember { mutableStateOf(listOf<RewardItem>()) }
@@ -1848,9 +1863,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
                             border = BorderStroke(1.dp, OutlineColor)
                         ) {
                             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(item.color.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                                    Icon(item.icon, contentDescription = null, tint = item.color)
-                                }
+                                BrandLogoTile(item, 40.dp)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(item.brand, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
@@ -1978,12 +1991,7 @@ fun RewardCard(
         border = BorderStroke(1.dp, OutlineColor)
     ) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(64.dp).clip(CircleShape).background(item.color.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(32.dp), tint = item.color)
-            }
+            BrandLogoTile(item, 64.dp)
             Spacer(modifier = Modifier.height(12.dp))
             Text(item.brand, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Text(item.title, style = MaterialTheme.typography.bodySmall, color = TextSecondary, textAlign = TextAlign.Center)

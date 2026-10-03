@@ -59,13 +59,14 @@ val TierSilver = Color(0xFFB7C0C9)
 val TierGold = Color(0xFFF2C14E)
 val TierPlatinum = Color(0xFF8FD3E8)
 
-// Reward partner tints. Brand colors that vanish on a dark card (Samsung blue,
-// Puma/Nike black) are lightened so the icons stay visible.
-val RewardMcDonalds = Color(0xFFFFC72C)
-val RewardAmazon = Color(0xFFFF9900)
-val RewardFlipkart = Color(0xFF5B9BFF)
-val RewardSamsung = Color(0xFF6C8CFF)
-val RewardSport = Color(0xFFE8EDE8)
+// Karma Store brand tiles: each partner's own brand colors behind its logo.
+val BrandMcDonaldsRed = Color(0xFFDA291C)
+val BrandMcDonaldsGold = Color(0xFFFFC72C)
+val BrandSamsungBlue = Color(0xFF1428A0)
+val BrandAmazonNavy = Color(0xFF232F3E)
+val BrandFlipkartBlue = Color(0xFF2874F0)
+val BrandWhite = Color(0xFFFFFFFF)
+val BrandBlack = Color(0xFF000000)
 
 // The logo animation video has a pure black backdrop, so the role-selection
 // screen must stay true black to blend with it.

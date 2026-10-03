@@ -16,3 +16,8 @@ Auto-matching, collector role, live delivery tracking, raw-material requests, an
 2. Open in Android Studio and run on a device or emulator (minSdk 24).
 
 Note: the Gemini key is currently packaged in the APK. Before a public release, move AI calls behind Firebase AI Logic with App Check or a backend proxy, and restrict the Maps key to this app's package and signing SHA-1.
+
+## Brand logos
+The Karma Store shows partner logos on brand-coloured tiles. The bundled McDonald's, Samsung, Puma and Nike marks come from [Simple Icons](https://simpleicons.org) (CC0). All brand names and logos are trademarks of their owners and are shown only to illustrate the rewards store in this prototype; a real release would need each partner's permission.
+
+To add or replace a logo, put a file named `logo_<brand>` (for example `logo_amazon.png`) in `app/src/main/res/drawable`. Amazon and Flipkart currently show their name on a tile until you add official artwork from their brand pages.
