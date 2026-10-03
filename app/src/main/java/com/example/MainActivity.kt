@@ -2,6 +2,7 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
@@ -20,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +30,20 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
@@ -103,7 +119,10 @@ val AppStartTime = System.currentTimeMillis()
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         setContent {
             MyApplicationTheme {
                 KarmaKitchenApp()
@@ -113,8 +132,8 @@ class MainActivity : ComponentActivity() {
 }
 
 data class UserProfile(
-    val name: String = "Shamikh Chasmawala",
-    val email: String = "shamikhc24118@gmail.com",
+    val name: String = "",
+    val email: String = "",
     val phone: String = "",
     val address: String = "",
     val karmaPoints: Int = 1240
@@ -136,7 +155,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
     val items = listOf(Screen.Dashboard, Screen.Donate, Screen.Store)
-    var userProfile by remember { mutableStateOf(UserProfile()) }
+    val appContext = LocalContext.current
+    var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
+    LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -144,7 +165,11 @@ fun KarmaKitchenApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            if (currentRoute == Screen.Dashboard.route) {
+            AnimatedVisibility(
+                visible = currentRoute == Screen.Dashboard.route,
+                enter = scaleIn(tween(250)) + fadeIn(tween(250)),
+                exit = scaleOut(tween(150)) + fadeOut(tween(150))
+            ) {
                 FloatingActionButton(
                     onClick = { 
                         navController.navigate(Screen.Donate.route) {
@@ -156,7 +181,7 @@ fun KarmaKitchenApp() {
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.Black
+                    contentColor = OnPrimaryGreen
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "New Donation")
                 }
@@ -164,14 +189,25 @@ fun KarmaKitchenApp() {
         },
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
-            if (currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route) {
-                NavigationBar {
+            AnimatedVisibility(
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.NgoDashboard.route,
+                enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
+                exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
+            ) {
+                NavigationBar(containerColor = SurfaceColor, tonalElevation = 0.dp) {
                     val currentDestination = navBackStackEntry?.destination
                     items.forEach { screen ->
                         NavigationBarItem(
                             icon = { Icon(screen.icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = OnPrimaryGreenContainer,
+                                selectedTextColor = PrimaryGreen,
+                                indicatorColor = PrimaryGreenLight,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextSecondary
+                            ),
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -190,7 +226,11 @@ fun KarmaKitchenApp() {
         NavHost(
             navController = navController,
             startDestination = Screen.RoleSelection.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 12 } },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(300)) { it / 12 } }
         ) {
             composable(Screen.RoleSelection.route) { RoleSelectionScreen(navController) }
             composable(Screen.NgoDashboard.route) { NgoDashboardScreen(navController) }
@@ -377,7 +417,7 @@ fun WelcomeScreen(navController: NavController) {
                         Icon(
                             imageVector = Icons.Filled.TipsAndUpdates,
                             contentDescription = null,
-                            tint = Color(0xFFFFCA28),
+                            tint = AccentGold,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -424,7 +464,7 @@ fun WelcomeScreen(navController: NavController) {
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.Black
+                    contentColor = OnPrimaryGreen
                 )
             ) {
                 Text(
@@ -441,7 +481,7 @@ fun WelcomeScreen(navController: NavController) {
 fun KarmaKitchenLogoText(
     modifier: Modifier = Modifier,
     fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
-    textColor: Color = Color.White,
+    textColor: Color = SecondaryAmber,
     accentColor: Color = PrimaryGreen
 ) {
     Row(
@@ -517,7 +557,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             letterSpacing = 1.sp
                         )
                         Text(
-                            text = userProfile.name,
+                            text = userProfile.name.ifBlank { "Donor" },
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -565,7 +605,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                             Icon(Icons.Filled.Stars, contentDescription = null, tint = PrimaryGreen)
                         }
                         Column {
-                            Text("%,d".format(userProfile.karmaPoints), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = PrimaryGreen)
+                            val animatedKarma by animateIntAsState(userProfile.karmaPoints, tween(800), label = "karma")
+                            Text("%,d".format(animatedKarma), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = JetBrainsMono), fontWeight = FontWeight.Black, color = PrimaryGreen)
                             Text("KARMA POINTS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = TextSecondary)
                         }
                     }
@@ -608,13 +649,14 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("1,240 KP", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                        Text("%,d KP".format(userProfile.karmaPoints), style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = PrimaryGreen, fontWeight = FontWeight.Bold)
                         Text("2,000 KP (Silver)", style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetBrainsMono), color = TextSecondary)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     
+                    val animatedTierProgress by animateFloatAsState((userProfile.karmaPoints / 2000f).coerceIn(0f, 1f), tween(800), label = "tierProgress")
                     LinearProgressIndicator(
-                        progress = { 1240f / 2000f },
+                        progress = { animatedTierProgress },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -624,7 +666,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    Text("Save 760 more points worth of food to reach the next tier!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text(if (userProfile.karmaPoints < 2000) "Save ${2000 - userProfile.karmaPoints} more points worth of food to reach the next tier!" else "Silver tier unlocked. See Impact Tiers for the next goal!", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
         }
@@ -642,8 +684,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                items(dummyNgos) { ngo ->
-                    NgoNeedCard(ngo)
+                itemsIndexed(dummyNgos) { index, ngo ->
+                    Box(Modifier.appearOnScreen(index)) { NgoNeedCard(ngo) }
                 }
             }
         }
@@ -654,8 +696,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        items(dummyFeed) { feedItem ->
-            LiveFeedCard(feedItem)
+        itemsIndexed(dummyFeed) { index, feedItem ->
+            Box(Modifier.appearOnScreen(index)) { LiveFeedCard(feedItem) }
         }
 
         item {
@@ -663,15 +705,15 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             Text("Recent Donations", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
         }
 
-        items(recentDonations) { donation ->
-            DonationItemCard(donation)
+        itemsIndexed(recentDonations) { index, donation ->
+            Box(Modifier.appearOnScreen(index)) { DonationItemCard(donation) }
         }
     }
 }
 
 data class NgoNeed(val name: String, val distance: String, val status: String, val statusColor: Color, val preferredItems: String)
 val dummyNgos = listOf(
-    NgoNeed("Vadodara Relief Kitchen", "2.5 km away", "Urgent Need", Color(0xFFEF5350), "Cooked Meals, Fresh Produce"),
+    NgoNeed("Vadodara Relief Kitchen", "2.5 km away", "Urgent Need", DangerColor, "Cooked Meals, Fresh Produce"),
     NgoNeed("Hope Shelter", "4.1 km away", "Accepting Donations", PrimaryGreen, "Packaged Food, Grains"),
     NgoNeed("City Orphanage", "5.8 km away", "Accepting Donations", PrimaryGreen, "Fruits, Dairy")
 )
@@ -700,10 +742,11 @@ fun NgoNeedCard(ngo: NgoNeed) {
 
 data class LiveFeedItem(val message: String, val icon: ImageVector, val color: Color)
 val dummyFeed = listOf(
-    LiveFeedItem("Vansh just saved 4 meals!", Icons.Filled.Favorite, Color(0xFFEF5350)),
-    LiveFeedItem("Vidyanshu donated 2 boxes of fresh produce.", Icons.Filled.Eco, PrimaryGreen),
-    LiveFeedItem("Navrachana Community Center just reached their daily goal!", Icons.Filled.EmojiEvents, Color(0xFFFFCA28)),
-    LiveFeedItem("Aarti earned 50 Karma Points for an urgent delivery.", Icons.Filled.Stars, Color(0xFF42A5F5))
+    LiveFeedItem("Riya donated 12 servings of veg biryani.", Icons.Filled.Restaurant, PrimaryGreen),
+    LiveFeedItem("Arjun just saved 4 meals!", Icons.Filled.Favorite, DangerColor),
+    LiveFeedItem("Annapurna Seva Trust received 30 chapatis from Meera.", Icons.Filled.LocalShipping, InfoColor),
+    LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", Icons.Filled.Stars, AccentGold),
+    LiveFeedItem("Hope Shelter reached its daily goal of 200 meals!", Icons.Filled.EmojiEvents, AccentGold)
 )
 
 @Composable
@@ -745,9 +788,10 @@ fun ImpactCard(modifier: Modifier = Modifier, title: String, value: String, icon
 data class DonationItem(val title: String, val date: String, val status: String, val points: Int)
 
 val recentDonations = listOf(
-    DonationItem("Leftover Catering Sandwiches", "Today, 2:00 PM", "Delivered", 150),
-    DonationItem("Fresh Produce Basket", "Yesterday", "Delivered", 200),
-    DonationItem("Bakery Surplus", "Aug 15", "Delivered", 100)
+    DonationItem("Veg Biryani, 12 servings", "Today, 1:30 PM", "On the way", 300),
+    DonationItem("Leftover Catering Sandwiches", "Yesterday, 7:45 PM", "Delivered", 150),
+    DonationItem("Fresh Vegetable Basket", "29 Sep", "Delivered", 200),
+    DonationItem("Bakery Surplus, 20 breads", "26 Sep", "Delivered", 100)
 )
 
 @Composable
@@ -838,15 +882,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
         }
     }
 
-    val calculatedPoints = remember(servings, qualityText) {
-        val servingsNum = Regex("\\d+").find(servings)?.value?.toIntOrNull() ?: 1
-        val qualityMultiplier = when {
-            qualityText.contains("High", ignoreCase = true) || qualityText.contains("Excellent", ignoreCase = true) || qualityText.contains("Fresh", ignoreCase = true) -> 50
-            qualityText.contains("Medium", ignoreCase = true) || qualityText.contains("Good", ignoreCase = true) -> 30
-            else -> 20
-        }
-        servingsNum * qualityMultiplier
-    }
+    val calculatedPoints = remember(servings, qualityText) { calculateKarmaPoints(servings, qualityText) }
 
     fun analyzeUri(uri: Uri) {
         capturedImageUri = uri
@@ -948,7 +984,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                 onClick = { cameraPermissionState.launchPermissionRequest() },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black)
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
                             ) {
                                 Text("Allow")
                             }
@@ -1038,7 +1074,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                             Icon(
                                 Icons.Filled.Info,
                                 contentDescription = null,
-                                tint = Color(0xFFFFD54F),
+                                tint = AccentGold,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
@@ -1067,7 +1103,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                     .fillMaxWidth()
                     .height(54.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
             ) {
                 Text("Back to Dashboard", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             }
@@ -1100,15 +1136,25 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
             Text("Create Donation", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
         }
         Spacer(modifier = Modifier.height(8.dp))
+        val animatedStepProgress by animateFloatAsState(step / 3f, tween(400), label = "stepProgress")
         LinearProgressIndicator(
-            progress = { step / 3f },
+            progress = { animatedStepProgress },
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
             color = PrimaryGreen,
             trackColor = SurfaceVariantColor
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        when (step) {
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                val forward = targetState > initialState
+                (fadeIn(tween(250)) + slideInHorizontally(tween(300)) { if (forward) it / 8 else -it / 8 }) togetherWith
+                    (fadeOut(tween(150)) + slideOutHorizontally(tween(300)) { if (forward) -it / 8 else it / 8 })
+            },
+            label = "donationStep"
+        ) { currentStep ->
+        when (currentStep) {
             1 -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -1127,7 +1173,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(PrimaryGreen),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = OnPrimaryGreen, modifier = Modifier.size(18.dp))
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
@@ -1173,7 +1219,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                 Box(
                                                     modifier = Modifier
                                                         .fillMaxSize()
-                                                        .background(Color.Black.copy(alpha = 0.85f)),
+                                                        .background(BackgroundColor.copy(alpha = 0.85f)),
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     com.example.ui.ScannerAnimation(modifier = Modifier.fillMaxSize())
@@ -1186,14 +1232,14 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                             .align(Alignment.TopEnd)
                                                             .padding(12.dp)
                                                             .clip(RoundedCornerShape(8.dp))
-                                                            .background(if (isFresh) PrimaryGreen else Color(0xFFD32F2F))
+                                                            .background(if (isFresh) PrimaryGreen else DangerColor)
                                                             .padding(horizontal = 10.dp, vertical = 6.dp)
                                                     ) {
                                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                                             Icon(
                                                                 if (isFresh) Icons.Filled.Check else Icons.Filled.Block,
                                                                 contentDescription = null,
-                                                                tint = if (isFresh) Color.Black else Color.White,
+                                                                tint = if (isFresh) OnPrimaryGreen else OnDanger,
                                                                 modifier = Modifier.size(14.dp)
                                                             )
                                                             Spacer(modifier = Modifier.width(4.dp))
@@ -1201,7 +1247,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                                 if (isFresh) "VERIFIED: ${analysisResult!!.quality.uppercase()}" else "INEDIBLE / UNFIT",
                                                                 style = MaterialTheme.typography.labelSmall,
                                                                 fontWeight = FontWeight.Bold,
-                                                                color = if (isFresh) Color.Black else Color.White
+                                                                color = if (isFresh) OnPrimaryGreen else OnDanger
                                                             )
                                                         }
                                                     }
@@ -1273,17 +1319,17 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        colors = CardDefaults.cardColors(containerColor = Color(0x33E53935)),
+                                        colors = CardDefaults.cardColors(containerColor = DangerContainer),
                                         shape = RoundedCornerShape(12.dp),
-                                        border = BorderStroke(1.dp, Color(0xFFE53935).copy(alpha = 0.5f))
+                                        border = BorderStroke(1.dp, DangerColor.copy(alpha = 0.5f))
                                     ) {
                                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Filled.Warning, contentDescription = null, tint = Color(0xFFEF5350))
+                                            Icon(Icons.Filled.Warning, contentDescription = null, tint = DangerColor)
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
                                                 errorMessage!!,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Color(0xFFFFCDD2),
+                                                color = OnDangerContainer,
                                                 modifier = Modifier.weight(1f)
                                             )
                                         }
@@ -1311,14 +1357,14 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(6.dp))
-                                                .background(if (res.isVeg) PrimaryGreenLight else Color(0x33FF7043))
+                                                .background(if (res.isVeg) PrimaryGreenLight else NonVegContainer)
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
                                             Text(
                                                 if (res.isVeg) "VEG" else "NON-VEG",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (res.isVeg) PrimaryGreen else Color(0xFFFF7043)
+                                                color = if (res.isVeg) PrimaryGreen else NonVegColor
                                             )
                                         }
                                     }
@@ -1367,7 +1413,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         Card(
                                             modifier = Modifier.weight(1f),
                                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                            border = BorderStroke(1.dp, if (res.isSafeToDonate) OutlineColor else Color(0xFFD32F2F)),
+                                            border = BorderStroke(1.dp, if (res.isSafeToDonate) OutlineColor else DangerColor),
                                             shape = RoundedCornerShape(12.dp)
                                         ) {
                                             Column(modifier = Modifier.padding(10.dp)) {
@@ -1375,7 +1421,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                     Icon(
                                                         if (res.isSafeToDonate) Icons.Filled.CheckCircle else Icons.Filled.Dangerous,
                                                         contentDescription = null,
-                                                        tint = if (res.isSafeToDonate) PrimaryGreen else Color(0xFFE53935),
+                                                        tint = if (res.isSafeToDonate) PrimaryGreen else DangerColor,
                                                         modifier = Modifier.size(14.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(4.dp))
@@ -1383,7 +1429,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                         "QUALITY",
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = if (res.isSafeToDonate) TextSecondary else Color(0xFFEF5350)
+                                                        color = if (res.isSafeToDonate) TextSecondary else DangerColor
                                                     )
                                                 }
                                                 Spacer(modifier = Modifier.height(4.dp))
@@ -1391,7 +1437,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                     res.quality,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (res.isSafeToDonate) TextPrimary else Color(0xFFFFCDD2)
+                                                    color = if (res.isSafeToDonate) TextPrimary else OnDangerContainer
                                                 )
                                             }
                                         }
@@ -1403,16 +1449,16 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         // Inedible / Unsafe Safety Notice
                                         Card(
                                             modifier = Modifier.fillMaxWidth(),
-                                            colors = CardDefaults.cardColors(containerColor = Color(0x33D32F2F)),
+                                            colors = CardDefaults.cardColors(containerColor = DangerContainer),
                                             shape = RoundedCornerShape(14.dp),
-                                            border = BorderStroke(1.5.dp, Color(0xFFD32F2F))
+                                            border = BorderStroke(1.5.dp, DangerColor)
                                         ) {
                                             Column(modifier = Modifier.padding(16.dp)) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(
                                                         Icons.Filled.Dangerous,
                                                         contentDescription = null,
-                                                        tint = Color(0xFFEF5350),
+                                                        tint = DangerColor,
                                                         modifier = Modifier.size(24.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(8.dp))
@@ -1420,20 +1466,20 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                         "Food Declared Inedible",
                                                         style = MaterialTheme.typography.titleMedium,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFFFFCDD2)
+                                                        color = OnDangerContainer
                                                     )
                                                 }
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                     res.rejectionReason ?: "This food item is evaluated as spoiled, expired, or unsafe for consumption. In accordance with safety regulations, it cannot be accepted for donation.",
                                                     style = MaterialTheme.typography.bodyMedium,
-                                                    color = Color.White
+                                                    color = TextPrimary
                                                 )
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                     "⚠️ Food safety policy blocks this item from donation. Please safely compost or dispose of it.",
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = Color(0xFFFFAB91),
+                                                    color = OnDangerContainer,
                                                     fontWeight = FontWeight.SemiBold
                                                 )
                                             }
@@ -1466,7 +1512,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                             onClick = { step = 2 },
                                             modifier = Modifier.fillMaxWidth().height(54.dp),
                                             shape = RoundedCornerShape(16.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black)
+                                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
                                         ) {
                                             Icon(Icons.Outlined.VolunteerActivism, contentDescription = null)
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -1483,12 +1529,12 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                                 modifier = Modifier.fillMaxWidth().height(54.dp),
                                                 shape = RoundedCornerShape(16.dp),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    disabledContainerColor = Color(0xFF2C1B1B),
-                                                    disabledContentColor = Color(0xFFE57373)
+                                                    disabledContainerColor = DangerContainer,
+                                                    disabledContentColor = DangerColor
                                                 ),
                                                 enabled = false
                                             ) {
-                                                Icon(Icons.Filled.Block, contentDescription = null, tint = Color(0xFFE53935), modifier = Modifier.size(20.dp))
+                                                Icon(Icons.Filled.Block, contentDescription = null, tint = DangerColor, modifier = Modifier.size(20.dp))
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text("Cannot Proceed: Inedible / Unsafe Food", fontWeight = FontWeight.Bold)
                                             }
@@ -1571,6 +1617,11 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         selected = isVeg,
                                         onClick = { isVeg = true },
                                         label = { Text("Veg") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = PrimaryGreenLight,
+                                            selectedLabelColor = OnPrimaryGreenContainer,
+                                            selectedLeadingIconColor = OnPrimaryGreenContainer
+                                        ),
                                         leadingIcon = {
                                             if (isVeg) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                         }
@@ -1580,6 +1631,11 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                         selected = !isVeg,
                                         onClick = { isVeg = false },
                                         label = { Text("Non-Veg") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = NonVegContainer,
+                                            selectedLabelColor = NonVegColor,
+                                            selectedLeadingIconColor = NonVegColor
+                                        ),
                                         leadingIcon = {
                                             if (!isVeg) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                         }
@@ -1603,7 +1659,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                 onClick = { step = 3 },
                                 modifier = Modifier.weight(1f).height(50.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen),
                                 enabled = foodTitle.isNotBlank() && servings.isNotBlank()
                             ) {
                                 Text("Next: Location", fontWeight = FontWeight.Bold)
@@ -1706,7 +1762,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                 onClick = { step = 4 },
                                 modifier = Modifier.weight(1f).height(50.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black)
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
                             ) {
                                 Text("Confirm Pickup", fontWeight = FontWeight.Bold)
                             }
@@ -1714,6 +1770,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                     }
                 }
             }
+        }
         }
     }
 }
@@ -1724,12 +1781,12 @@ data class RewardItem(val id: String, val brand: String, val title: String, val 
 @Composable
 fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) -> Unit) {
     val rewards = listOf(
-        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, Icons.Filled.Fastfood, Color(0xFFFFC72C)),
-        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, Icons.Filled.ShoppingCart, Color(0xFFFF9900)),
-        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, Icons.Filled.LocalMall, Color(0xFF2874F0)),
-        RewardItem("4", "Samsung", "10% Off Coupon", 2000, Icons.Filled.PhoneAndroid, Color(0xFF1428A0)),
-        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, Icons.Filled.DirectionsRun, Color(0xFF000000)),
-        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, Icons.Filled.DirectionsRun, Color(0xFF000000))
+        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, Icons.Filled.Fastfood, RewardMcDonalds),
+        RewardItem("2", "Amazon", "₹500 Gift Card", 1000, Icons.Filled.ShoppingCart, RewardAmazon),
+        RewardItem("3", "Flipkart", "₹500 Gift Card", 1000, Icons.Filled.LocalMall, RewardFlipkart),
+        RewardItem("4", "Samsung", "10% Off Coupon", 2000, Icons.Filled.PhoneAndroid, RewardSamsung),
+        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, Icons.Filled.DirectionsRun, RewardSport),
+        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, Icons.Filled.DirectionsRun, RewardSport)
     )
 
     var cart by remember { mutableStateOf(listOf<RewardItem>()) }
@@ -1759,7 +1816,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
                 onClick = { checkoutSuccess = false },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
             ) {
                 Text("Back to Store", fontWeight = FontWeight.Bold)
             }
@@ -1829,7 +1886,7 @@ fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) ->
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen),
                 enabled = cart.isNotEmpty() && userProfile.karmaPoints >= totalPoints
             ) {
                 Text(
@@ -2071,12 +2128,12 @@ fun ProfileEditScreen(
         
         Button(
             onClick = {
-                onProfileUpdate(UserProfile(name, email, phone, address))
+                onProfileUpdate(profile.copy(name = name, email = email, phone = phone, address = address))
                 onBack()
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.Black)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = OnPrimaryGreen)
         ) {
             Text("Save Changes", fontWeight = FontWeight.Bold)
         }
@@ -2088,10 +2145,10 @@ fun ProfileEditScreen(
 @Composable
 fun TierListScreen(navController: NavController, userProfile: UserProfile) {
     val tiers = listOf(
-        TierInfo("Bronze", 0, "Default 1x KP multiplier", Color(0xFFCD7F32)),
-        TierInfo("Silver", 2000, "1.2x KP multiplier\n5% store discount", Color(0xFFC0C0C0)),
-        TierInfo("Gold", 5000, "1.5x KP multiplier\n10% store discount", Color(0xFFFFD700)),
-        TierInfo("Platinum", 10000, "2.0x KP multiplier\n20% store discount\nFree shipping", Color(0xFFE5E4E2))
+        TierInfo("Bronze", 0, "Default 1x KP multiplier", TierBronze),
+        TierInfo("Silver", 2000, "1.2x KP multiplier\n5% store discount", TierSilver),
+        TierInfo("Gold", 5000, "1.5x KP multiplier\n10% store discount", TierGold),
+        TierInfo("Platinum", 10000, "2.0x KP multiplier\n20% store discount\nFree shipping", TierPlatinum)
     )
 
     val currentTier = when {
@@ -2238,7 +2295,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                                             text = "CURRENT",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.Black
+                                            color = BackgroundColor
                                         )
                                     }
                                 }
@@ -2276,13 +2333,14 @@ fun FoodWasteFactBar() {
     var facts by remember { mutableStateOf<com.example.api.FoodWasteFacts?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
+    val factsContext = LocalContext.current
 
     LaunchedEffect(Unit) {
         isLoading = true
         // Default facts as a fallback immediately for UI responsiveness, then load actual
         facts = com.example.api.FoodWasteFacts(
-            worldWaste = "1.3B Tonnes",
-            indiaWaste = "68.7M Tonnes",
+            worldWaste = "1.05B Tonnes",
+            indiaWaste = "78M Tonnes",
             gujaratWaste = "Loading...",
             indiaWasteKgPerSec = 2178.2,
             gujaratWasteKgPerSec = 112.5,
@@ -2290,13 +2348,15 @@ fun FoodWasteFactBar() {
         )
         
         try {
-            val fetchedFacts = com.example.api.fetchFoodWasteFacts()
+            val cached = loadCachedFacts(factsContext)
+            val fetchedFacts = cached ?: com.example.api.fetchFoodWasteFacts()
             if (fetchedFacts != null) {
+                if (cached == null) saveCachedFacts(factsContext, fetchedFacts)
                 facts = fetchedFacts
             } else {
                 facts = com.example.api.FoodWasteFacts(
-                    worldWaste = "1.3 Billion Tonnes",
-                    indiaWaste = "68 Million Tonnes",
+                    worldWaste = "1.05 Billion Tonnes",
+                    indiaWaste = "78 Million Tonnes",
                     gujaratWaste = "Thousands of Tonnes",
                     indiaWasteKgPerSec = 2178.2,
                     gujaratWasteKgPerSec = 112.5,
@@ -2305,8 +2365,8 @@ fun FoodWasteFactBar() {
             }
         } catch (e: Exception) {
              facts = com.example.api.FoodWasteFacts(
-                worldWaste = "1.3 Billion Tonnes",
-                indiaWaste = "68 Million Tonnes",
+                worldWaste = "1.05 Billion Tonnes",
+                indiaWaste = "78 Million Tonnes",
                 gujaratWaste = "Thousands of Tonnes",
                 indiaWasteKgPerSec = 2178.2,
                 gujaratWasteKgPerSec = 112.5,
@@ -2331,7 +2391,7 @@ fun FoodWasteFactBar() {
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            if (isLoading && facts?.worldWaste == "1.3B Tonnes") {
+            if (isLoading && facts?.worldWaste == "1.05B Tonnes") {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -2406,7 +2466,7 @@ fun RoleSelectionScreen(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(VideoBackdrop)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -2440,7 +2500,7 @@ fun RoleSelectionScreen(navController: NavController) {
         Text(
             text = "Unified Donation Platform",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.Gray
+            color = TextSecondary
         )
         
         Spacer(modifier = Modifier.height(64.dp))
@@ -2452,13 +2512,13 @@ fun RoleSelectionScreen(navController: NavController) {
                 .fillMaxWidth()
                 .height(64.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF34C759))
+            colors = ButtonDefaults.buttonColors(containerColor = SuccessColor)
         ) {
             Text(
                 "I want to Donate Food",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = OnPrimaryGreen
             )
         }
         
@@ -2471,13 +2531,13 @@ fun RoleSelectionScreen(navController: NavController) {
                 .fillMaxWidth()
                 .height(64.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9F0A))
+            colors = ButtonDefaults.buttonColors(containerColor = WarningColor)
         ) {
             Text(
                 "I am an NGO / Receiver",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = OnSecondaryAmber
             )
         }
     }
@@ -2493,6 +2553,7 @@ fun NgoDashboardScreen(navController: NavController) {
     var isAnalyzing by remember { mutableStateOf(false) }
     var analysisResult by remember { mutableStateOf<IntakeAnalysisResult?>(null) }
     var showResultDialog by remember { mutableStateOf(false) }
+    var scanError by remember { mutableStateOf<String?>(null) }
     
     val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -2506,14 +2567,10 @@ fun NgoDashboardScreen(navController: NavController) {
                     analysisResult = verifyIntakeWithGemini(base64)
                     showResultDialog = true
                 } catch (e: Exception) {
-                    analysisResult = IntakeAnalysisResult(
-                        verifiedMatch = true,
-                        freshness = "Visually Fresh & Verified",
-                        estimatedExpiration = "Consume within 24 Hours",
-                        storageInstructions = "Refrigerate immediately at 4°C",
-                        dietaryTags = listOf("Vegan", "High-Protein", "Gluten-Free")
-                    )
-                    showResultDialog = true
+                    // Never fabricate a "verified" result: ask for a manual inspection instead.
+                    analysisResult = null
+                    showResultDialog = false
+                    scanError = "AI check unavailable. Please inspect the food manually before accepting it."
                 } finally {
                     isAnalyzing = false
                 }
@@ -2536,7 +2593,7 @@ fun NgoDashboardScreen(navController: NavController) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(BackgroundColor),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         // Header
@@ -2556,18 +2613,18 @@ fun NgoDashboardScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Operational Command", style = MaterialTheme.typography.labelMedium, color = Color(0xFFFF9F0A), fontWeight = FontWeight.Bold)
-                        Text("Navrachana Community", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Black)
+                        Text("Operational Command", style = MaterialTheme.typography.labelMedium, color = WarningColor, fontWeight = FontWeight.Bold)
+                        Text("Navrachana Community", style = MaterialTheme.typography.titleLarge, color = TextPrimary, fontWeight = FontWeight.Black)
                     }
                 }
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1C1C1E)),
+                        .background(SurfaceVariantColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Person, contentDescription = "Profile", tint = Color.White)
+                    Icon(Icons.Filled.Person, contentDescription = "Profile", tint = TextPrimary)
                 }
             }
         }
@@ -2590,7 +2647,7 @@ fun NgoDashboardScreen(navController: NavController) {
         // Action Center
         item {
             Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text("Action Center", style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Action Center", style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 // Broadcast Toggle
@@ -2598,19 +2655,20 @@ fun NgoDashboardScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF1C1C1E))
+                        .background(SurfaceColor)
+                        .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Urgent Need Broadcast", style = MaterialTheme.typography.bodyLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(if (isBroadcasting) "Broadcasting to local donors" else "Currently inactive", style = MaterialTheme.typography.bodyMedium, color = if (isBroadcasting) Color(0xFFFF9F0A) else Color.Gray)
+                        Text("Urgent Need Broadcast", style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        Text(if (isBroadcasting) "Broadcasting to local donors" else "Currently inactive", style = MaterialTheme.typography.bodyMedium, color = if (isBroadcasting) WarningColor else TextSecondary)
                     }
                     androidx.compose.material3.Switch(
                         checked = isBroadcasting,
                         onCheckedChange = { isBroadcasting = it },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Color(0xFFFF9F0A))
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = WarningColor)
                     )
                 }
 
@@ -2621,19 +2679,20 @@ fun NgoDashboardScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF1C1C1E))
+                        .background(SurfaceColor)
+                        .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Accepting Donations", style = MaterialTheme.typography.bodyLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Manage warehouse capacity", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        Text("Accepting Donations", style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        Text("Manage warehouse capacity", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                     }
                     androidx.compose.material3.Switch(
                         checked = isAccepting,
                         onCheckedChange = { isAccepting = it },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Color(0xFF34C759))
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = SuccessColor)
                     )
                 }
             }
@@ -2645,7 +2704,7 @@ fun NgoDashboardScreen(navController: NavController) {
             Text(
                 "Live Incoming Deliveries",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -2659,7 +2718,8 @@ fun NgoDashboardScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1C1C1E))
+                    .background(SurfaceColor)
+                    .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
             ) {
                 Row(
                     modifier = Modifier
@@ -2671,15 +2731,15 @@ fun NgoDashboardScreen(navController: NavController) {
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF34C759).copy(alpha = 0.2f)),
+                            .background(SuccessColor.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.DirectionsCar, contentDescription = null, tint = Color(0xFF34C759))
+                        Icon(Icons.Filled.DirectionsCar, contentDescription = null, tint = SuccessColor)
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(delivery.first, style = MaterialTheme.typography.bodyLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("${delivery.second} • ${delivery.third}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        Text(delivery.first, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        Text("${delivery.second} • ${delivery.third}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                     }
                 }
                 // Actions inside card
@@ -2695,9 +2755,9 @@ fun NgoDashboardScreen(navController: NavController) {
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp, topStart = 0.dp, topEnd = 0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF34C759))
+                    colors = ButtonDefaults.buttonColors(containerColor = SuccessColor)
                 ) {
-                    Text("Accept & Log AI Intake", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Accept & Log AI Intake", color = OnPrimaryGreen, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2707,7 +2767,7 @@ fun NgoDashboardScreen(navController: NavController) {
             Text(
                 "Current Inventory",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -2717,9 +2777,9 @@ fun NgoDashboardScreen(navController: NavController) {
         items(mockInventory.size) { index ->
             val inventory = mockInventory[index]
             val statusColor = when(inventory.third) {
-                "Fresh" -> Color(0xFF34C759)
-                "Expiring Soon" -> Color(0xFFFF9F0A)
-                else -> Color(0xFFFF453A) // Red for expired
+                "Fresh" -> SuccessColor
+                "Expiring Soon" -> WarningColor
+                else -> DangerColor // Red for expired
             }
             
             Row(
@@ -2727,7 +2787,8 @@ fun NgoDashboardScreen(navController: NavController) {
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF1C1C1E))
+                    .background(SurfaceColor)
+                    .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -2742,8 +2803,8 @@ fun NgoDashboardScreen(navController: NavController) {
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(inventory.first, style = MaterialTheme.typography.bodyLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(inventory.second, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                    Text(inventory.first, style = MaterialTheme.typography.bodyLarge, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text(inventory.second, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                 }
                 
                 // Status Chip
@@ -2762,18 +2823,27 @@ fun NgoDashboardScreen(navController: NavController) {
     if (isAnalyzing) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { },
-            title = { Text("Smart Intake Scanner", color = Color.White) },
+            title = { Text("Smart Intake Scanner", color = TextPrimary) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(color = Color(0xFF34C759))
+                    CircularProgressIndicator(color = SuccessColor)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("AI is verifying food freshness...", color = Color.LightGray)
+                    Text("AI is verifying food freshness...", color = TextSecondary)
                 }
             },
             confirmButton = { },
-            containerColor = Color(0xFF1C1C1E),
-            titleContentColor = Color.White,
-            textContentColor = Color.LightGray
+            containerColor = SurfaceHighColor,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary
+        )
+    }
+
+    if (scanError != null) {
+        AlertDialog(
+            onDismissRequest = { scanError = null },
+            title = { Text("Could not verify food") },
+            text = { Text(scanError ?: "") },
+            confirmButton = { TextButton(onClick = { scanError = null }) { Text("OK") } }
         )
     }
 
@@ -2786,24 +2856,24 @@ fun NgoDashboardScreen(navController: NavController) {
                     Icon(
                         if (res.verifiedMatch) Icons.Filled.CheckCircle else Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = if (res.verifiedMatch) Color(0xFF34C759) else Color(0xFFFF9F0A),
+                        tint = if (res.verifiedMatch) SuccessColor else WarningColor,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Intake Logged", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Intake Logged", color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column {
-                    Text("The AI has verified this donation against the donor's original listing.", color = Color.LightGray, style = MaterialTheme.typography.bodyMedium)
+                    Text("The AI has verified this donation against the donor's original listing.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Freshness: ${res.freshness}", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Freshness: ${res.freshness}", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Expiration: ${res.estimatedExpiration}", color = Color(0xFFFF9F0A), fontWeight = FontWeight.Bold)
+                    Text("Expiration: ${res.estimatedExpiration}", color = WarningColor, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Storage: ${res.storageInstructions}", color = Color(0xFF34C759), fontWeight = FontWeight.Bold)
+                    Text("Storage: ${res.storageInstructions}", color = SuccessColor, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Automated Sorting:", color = Color.LightGray, style = MaterialTheme.typography.labelMedium)
+                    Text("Automated Sorting:", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2813,10 +2883,10 @@ fun NgoDashboardScreen(navController: NavController) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF34C759).copy(alpha = 0.2f))
+                                    .background(SuccessColor.copy(alpha = 0.2f))
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(tag, color = Color(0xFF34C759), style = MaterialTheme.typography.labelSmall)
+                                Text(tag, color = SuccessColor, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -2824,10 +2894,10 @@ fun NgoDashboardScreen(navController: NavController) {
             },
             confirmButton = {
                 TextButton(onClick = { showResultDialog = false }) {
-                    Text("Complete Intake", color = Color(0xFF34C759), fontWeight = FontWeight.Bold)
+                    Text("Complete Intake", color = SuccessColor, fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = Color(0xFF1C1C1E)
+            containerColor = SurfaceHighColor
         )
     }
 }
@@ -2837,12 +2907,13 @@ fun NgoMetricCard(title: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1C1C1E))
+            .background(SurfaceColor)
+            .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
             .padding(12.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(value, style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMono), color = Color.White, fontWeight = FontWeight.Black)
+        Text(value, style = MaterialTheme.typography.titleLarge.copy(fontFamily = JetBrainsMono), color = TextPrimary, fontWeight = FontWeight.Black)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(title, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Text(title, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
     }
 }

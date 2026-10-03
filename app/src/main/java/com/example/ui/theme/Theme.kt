@@ -1,30 +1,50 @@
 package com.example.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
+// Every role is set explicitly. Anything left out falls back to Material's
+// purple-tinted defaults, which used to leak into the nav bar, dialogs, menus
+// and chips.
 private val DarkColorScheme =
   darkColorScheme(
     primary = PrimaryGreen,
-    onPrimary = Color.Black,
+    onPrimary = OnPrimaryGreen,
     primaryContainer = PrimaryGreenLight,
-    onPrimaryContainer = Color.White,
-    secondary = MealsTextPrimary,
-    onSecondary = Color.Black,
+    onPrimaryContainer = OnPrimaryGreenContainer,
+    inversePrimary = Color(0xFF2E6B38),
+    secondary = SecondaryAmber,
+    onSecondary = OnSecondaryAmber,
     secondaryContainer = MealsCardBg,
     onSecondaryContainer = MealsTextPrimary,
-    tertiary = PrimaryGreen,
+    tertiary = InfoColor,
+    onTertiary = Color(0xFF062A3B),
+    tertiaryContainer = InfoContainer,
+    onTertiaryContainer = OnInfoContainer,
+    error = DangerColor,
+    onError = OnDanger,
+    errorContainer = DangerContainer,
+    onErrorContainer = OnDangerContainer,
     background = BackgroundColor,
     onBackground = TextPrimary,
     surface = SurfaceColor,
     onSurface = TextPrimary,
     surfaceVariant = SurfaceVariantColor,
     onSurfaceVariant = TextSecondary,
-    outline = OutlineColor
+    inverseSurface = Color(0xFFDDE5DE),
+    inverseOnSurface = Color(0xFF1A211C),
+    outline = OutlineStrong,
+    outlineVariant = OutlineColor,
+    scrim = Color.Black,
+    surfaceDim = BackgroundColor,
+    surfaceBright = Color(0xFF2A352D),
+    surfaceContainerLowest = Color(0xFF0B100D),
+    surfaceContainerLow = Color(0xFF121915),
+    surfaceContainer = SurfaceColor,
+    surfaceContainerHigh = SurfaceHighColor,
+    surfaceContainerHighest = Color(0xFF222D25)
   )
 
 @Composable
@@ -35,4 +55,3 @@ fun MyApplicationTheme(
 ) {
   MaterialTheme(colorScheme = DarkColorScheme, typography = Typography, content = content)
 }
-
