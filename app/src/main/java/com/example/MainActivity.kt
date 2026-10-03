@@ -742,10 +742,12 @@ fun NgoNeedCard(ngo: NgoNeed) {
 
 data class LiveFeedItem(val message: String, val icon: ImageVector, val color: Color)
 val dummyFeed = listOf(
-    LiveFeedItem("Vansh just saved 4 meals!", Icons.Filled.Favorite, DangerColor),
-    LiveFeedItem("Vidyanshu donated 2 boxes of fresh produce.", Icons.Filled.Eco, PrimaryGreen),
-    LiveFeedItem("Navrachana Community Center just reached their daily goal!", Icons.Filled.EmojiEvents, AccentGold),
-    LiveFeedItem("Aarti earned 50 Karma Points for an urgent delivery.", Icons.Filled.Stars, InfoColor)
+    LiveFeedItem("Riya donated 12 servings of veg biryani.", Icons.Filled.Restaurant, PrimaryGreen),
+    LiveFeedItem("Arjun just saved 4 meals!", Icons.Filled.Favorite, DangerColor),
+    LiveFeedItem("Annapurna Seva Trust received 30 chapatis from Meera.", Icons.Filled.LocalShipping, InfoColor),
+    LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", Icons.Filled.Stars, AccentGold),
+    LiveFeedItem("Hope Shelter reached its daily goal of 200 meals!", Icons.Filled.EmojiEvents, AccentGold)
+)
 )
 
 @Composable
@@ -787,9 +789,11 @@ fun ImpactCard(modifier: Modifier = Modifier, title: String, value: String, icon
 data class DonationItem(val title: String, val date: String, val status: String, val points: Int)
 
 val recentDonations = listOf(
-    DonationItem("Leftover Catering Sandwiches", "Today, 2:00 PM", "Delivered", 150),
-    DonationItem("Fresh Produce Basket", "Yesterday", "Delivered", 200),
-    DonationItem("Bakery Surplus", "Aug 15", "Delivered", 100)
+    DonationItem("Veg Biryani, 12 servings", "Today, 1:30 PM", "On the way", 300),
+    DonationItem("Leftover Catering Sandwiches", "Yesterday, 7:45 PM", "Delivered", 150),
+    DonationItem("Fresh Vegetable Basket", "29 Sep", "Delivered", 200),
+    DonationItem("Bakery Surplus, 20 breads", "26 Sep", "Delivered", 100)
+)
 )
 
 @Composable
