@@ -118,7 +118,7 @@ private val HeroHeight = 188.dp
 // Category looks (kept here so HomeData.kt stays free of Android resources)
 // -----------------------------------------------------------------------------
 
-private fun FoodCategory.art(): Int = when (this) {
+internal fun FoodCategory.art(): Int = when (this) {
     FoodCategory.Meals -> R.drawable.illus_food_meal
     FoodCategory.Bakery -> R.drawable.illus_food_bread
     FoodCategory.Fruit -> R.drawable.illus_food_fruit
@@ -128,7 +128,7 @@ private fun FoodCategory.art(): Int = when (this) {
 }
 
 /** Soft background colour behind a category's illustration. */
-private fun FoodCategory.tint(): Color = when (this) {
+internal fun FoodCategory.tint(): Color = when (this) {
     FoodCategory.Meals -> SecondaryAmber
     FoodCategory.Bakery -> Color(0xFFD99A52)
     FoodCategory.Fruit -> Color(0xFFE2543B)
@@ -154,7 +154,9 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
     var selectedCategory by remember { mutableStateOf<FoodCategory?>(null) }
     val ngos = remember(selectedCategory) { ngosAccepting(selectedCategory) }
     val smiles = SmileStore.smiles.toList()
-    val activeDonation = remember { recentDonations.firstOrNull { it.inTransit } }
+    // Donations made in this session (from the Donate screen) come first.
+    val donations = DonationLog.submitted.toList() + recentDonations
+    val activeDonation = donations.firstOrNull { it.inTransit }
 
     val openDonate = { navController.goToTab(Screen.Donate.route) }
     val openStore = { navController.goToTab(Screen.Store.route) }
@@ -235,8 +237,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             Column(Modifier.padding(horizontal = ScreenPadding)) {
                 SectionHeader("Your recent donations")
                 Spacer(Modifier.height(4.dp))
-                recentDonations.forEachIndexed { index, donation ->
-                    DonationRow(donation, showDivider = index < recentDonations.lastIndex)
+                donations.take(6).forEachIndexed { index, donation ->
+                    DonationRow(donation, showDivider = index < donations.take(6).lastIndex)
                 }
             }
         }
@@ -349,13 +351,13 @@ private fun KarmaPill(points: Int, onClick: () -> Unit) {
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Stars, contentDescription = null, tint = AccentGold, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(5.dp))
         Text(
             text = "%,d".format(points),
             style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
             color = TextPrimary
         )
+        Spacer(Modifier.width(5.dp))
+        KarmaCoin(size = 22.dp)
     }
 }
 
@@ -638,8 +640,8 @@ private fun rememberFoodWasteFacts(): State<FoodWasteFacts> {
 
 @Composable
 private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modifier) {
-    val steps = listOf("Picked up", "On the way", "Delivered")
-    val stage = 1
+    val steps = listOf("Posted", "Picked up", "Delivered")
+    val stage = donation.stage
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -658,7 +660,11 @@ private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modi
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Donation on its way", style = MaterialTheme.typography.labelMedium, color = PrimaryGreen)
+                    Text(
+                        if (stage == 0) "Waiting for a volunteer" else "Donation on its way",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = PrimaryGreen
+                    )
                     Text(
                         donation.title,
                         style = MaterialTheme.typography.titleSmall,
@@ -667,7 +673,7 @@ private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modi
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}",
+                        if (stage == 0) "Nearby NGOs can see it now" else "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         maxLines = 2,
@@ -1323,11 +1329,7 @@ private fun DonationRow(item: DonationItem, showDivider: Boolean) {
             Column(horizontalAlignment = Alignment.End) {
                 StatusChip(item.status)
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    "+${item.points} KP",
-                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
-                    color = PrimaryGreen
-                )
+                KarmaAmount("+${item.points}", style = MaterialTheme.typography.labelMedium)
             }
         }
         if (showDivider) HorizontalDivider(color = OutlineColor)
@@ -1336,7 +1338,7 @@ private fun DonationRow(item: DonationItem, showDivider: Boolean) {
 
 @Composable
 private fun StatusChip(status: String) {
-    val onTheWay = status == STATUS_ON_THE_WAY
+    val onTheWay = status != STATUS_DELIVERED
     Text(
         status,
         style = MaterialTheme.typography.labelSmall,

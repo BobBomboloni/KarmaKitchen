@@ -3,9 +3,9 @@
 AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with Kotlin and Jetpack Compose.
 
 ## What works
-- Donor flow: photograph food, Gemini checks safety and quality, donor reviews and submits.
+- Donor flow: a three-step Donate screen (photo and AI check, details with pickup time and a note, pickup address and coins summary). Gemini checks safety and quality; a submitted donation then shows up on the home screen tracker.
 - NGO flow: intake verification scan, inventory and deliveries (demo data).
-- Karma Points, tiers and the Karma Store (local state, demo vouchers).
+- Karma coins (shown with a crowned food coin instead of "KP"), tiers and the Karma Store (local state, demo vouchers).
 - Donor home: pickup location, a swipeable banner (donate, redeem points, a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
 - Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty.
 

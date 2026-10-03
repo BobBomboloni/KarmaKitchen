@@ -68,6 +68,7 @@ fun ngosAccepting(category: FoodCategory?, all: List<NgoRequest> = sampleNgoRequ
         .sortedWith(compareByDescending<NgoRequest> { it.urgent }.thenBy { it.distanceKm })
 
 const val STATUS_ON_THE_WAY = "On the way"
+const val STATUS_POSTED = "Waiting for pickup"
 const val STATUS_DELIVERED = "Delivered"
 
 data class DonationItem(
@@ -78,9 +79,26 @@ data class DonationItem(
     val points: Int,
     val category: FoodCategory,
     val volunteer: String? = null,
-    val etaMinutes: Int? = null
+    val etaMinutes: Int? = null,
+    /** 0 = posted and waiting for a volunteer, 1 = picked up and on the way, 2 = delivered. */
+    val stage: Int = 1
 ) {
-    val inTransit: Boolean get() = status == STATUS_ON_THE_WAY
+    val inTransit: Boolean get() = status != STATUS_DELIVERED
+}
+
+/** Best guess of what kind of food a dish name describes, for the picture next to a donation. */
+fun guessCategory(title: String): FoodCategory {
+    val t = title.lowercase()
+    fun has(vararg words: String) = words.any { t.contains(it) }
+    return when {
+        has("bread", "bun", "cake", "pastry", "croissant", "muffin", "cookie", "bakery", "pav") -> FoodCategory.Bakery
+        has("fruit", "apple", "banana", "mango", "orange", "grape", "papaya", "melon") -> FoodCategory.Fruit
+        has("milk", "curd", "yogurt", "yoghurt", "paneer", "cheese", "butter", "ghee") -> FoodCategory.Dairy
+        has("packet", "packaged", "sealed", "canned", "chips", "noodles", "flour", "grain") -> FoodCategory.Packaged
+        has("biryani", "rice", "dal", "curry", "khichdi", "pulao", "sandwich", "meal", "thali", "pizza", "pasta", "roti") -> FoodCategory.Meals
+        has("vegetable", "veggie", "salad", "carrot", "tomato", "potato", "spinach", "cabbage") -> FoodCategory.Vegetables
+        else -> FoodCategory.Meals
+    }
 }
 
 /** The delivered ones match what the NGO side of the app has received, so the demo stays consistent. */
