@@ -72,4 +72,20 @@ class HomeDataTest {
         val receivedTitles = sampleReceivals.map { it.title }
         recentDonations.filter { !it.inTransit }.forEach { assertTrue(it.title in receivedTitles) }
     }
+
+    @Test fun categoryIsGuessedFromTheDishName() {
+        assertEquals(FoodCategory.Meals, guessCategory("Veg Biryani, 12 servings"))
+        assertEquals(FoodCategory.Bakery, guessCategory("Bakery Surplus, 20 breads"))
+        assertEquals(FoodCategory.Vegetables, guessCategory("Fresh Vegetable Basket"))
+        assertEquals(FoodCategory.Fruit, guessCategory("Mixed fruit tray"))
+        assertEquals(FoodCategory.Dairy, guessCategory("Paneer and curd"))
+        assertEquals(FoodCategory.Packaged, guessCategory("Sealed biscuit packets"))
+        assertEquals(FoodCategory.Meals, guessCategory("Something unusual"))
+    }
+
+    @Test fun aNewDonationCountsAsInTransitUntilDelivered() {
+        val posted = DonationItem("Dal khichdi", "Nearby NGOs", "Just now", STATUS_POSTED, 200, FoodCategory.Meals, stage = 0)
+        assertTrue(posted.inTransit)
+        assertTrue(!posted.copy(status = STATUS_DELIVERED).inTransit)
+    }
 }

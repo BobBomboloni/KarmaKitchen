@@ -13,16 +13,29 @@ fun isUnsafeQuality(quality: String): Boolean {
 
 const val MAX_SERVINGS_FOR_POINTS = 50
 
-/** Karma points for a donation: capped servings times a quality multiplier. */
-fun calculateKarmaPoints(servingsText: String, quality: String): Int {
-    val servings = (Regex("\\d+").find(servingsText)?.value?.toIntOrNull() ?: 1)
-        .coerceIn(1, MAX_SERVINGS_FOR_POINTS)
-    val multiplier = when {
-        quality.contains("High", ignoreCase = true) ||
-            quality.contains("Excellent", ignoreCase = true) ||
-            quality.contains("Fresh", ignoreCase = true) -> 50
-        quality.contains("Medium", ignoreCase = true) || quality.contains("Good", ignoreCase = true) -> 30
-        else -> 20
-    }
-    return servings * multiplier
+/** Coins earned per serving: more for fresh, high-quality food. */
+fun karmaPerServing(quality: String): Int = when {
+    quality.contains("High", ignoreCase = true) ||
+        quality.contains("Excellent", ignoreCase = true) ||
+        quality.contains("Fresh", ignoreCase = true) -> 50
+    quality.contains("Medium", ignoreCase = true) || quality.contains("Good", ignoreCase = true) -> 30
+    else -> 20
+}
+
+/** The first number in text like "4-6 servings" (1 when there is none). */
+fun servingsCount(servingsText: String): Int =
+    Regex("\\d+").find(servingsText)?.value?.toIntOrNull() ?: 1
+
+/** Servings that count towards coins: at least 1, at most [MAX_SERVINGS_FOR_POINTS]. */
+fun countedServings(servingsText: String): Int = servingsCount(servingsText).coerceIn(1, MAX_SERVINGS_FOR_POINTS)
+
+/** Karma coins for a donation: capped servings times a quality multiplier. */
+fun calculateKarmaPoints(servingsText: String, quality: String): Int =
+    countedServings(servingsText) * karmaPerServing(quality)
+
+/** Used by the + and - buttons: "4-6 servings" plus one becomes "5 servings". */
+fun adjustServings(servingsText: String, delta: Int): String {
+    val match = Regex("\\d+").find(servingsText)
+    val next = ((match?.value?.toIntOrNull() ?: 0) + delta).coerceIn(1, 99)
+    return if (next == 1) "1 serving" else "$next servings"
 }

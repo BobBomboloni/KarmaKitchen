@@ -264,6 +264,77 @@ def medal(base):
     k.append(P("M28,48 A24,24 0 0 1 44,37", stroke="#FFFFFF", sw=3, sa=0.55, cap="round"))
     return k, 96, 96
 
+
+# ================================================================== KARMA COIN (96 x 96)
+def karma_coin():
+    """The app's currency: a gold coin with a bowl of food on its face and a crown above it."""
+    k = [shadow(48, 91, 26, 3.4)]
+    # coin: edge, face, raised rim, embossed face
+    k.append(P(circle(48, 61, 31), fill=YELLOW_D))
+    k.append(P(circle(48, 58, 31), fill=YELLOW))
+    k.append(P(circle(48, 58, 25.5), fill=YELLOW_D, fa=0.55))
+    k.append(P(circle(48, 58, 23), fill="#F8D95C"))
+    # bowl of food
+    k.append(P("M32,57 H64 C64,68 57.5,74 48,74 C38.5,74 32,68 32,57 Z", fill=AMBER_DD))
+    k.append(P(rrect(30, 54, 36, 6, 3), fill=AMBER_D))
+    k.append(P("M36,54 C36,46 42,42 48,42 C54,42 60,46 60,54 Z", fill=WHITE))
+    k.append(P("M40,50 C43,46 47,48 49,45 C52,43 56,46 57,50 Z", fill=AMBER, fa=0.9))
+    # crown sitting on the top edge
+    k.append(P("M29,26 L25,11 L37,19 L48,7 L59,19 L71,11 L67,26 Z", fill=AMBER_D))
+    k.append(P("M29,26 L25,11 L37,19 L48,7 L48,26 Z", fill=AMBER, fa=0.9))
+    k.append(P(rrect(28, 24, 40, 8, 3), fill=AMBER_DD))
+    k.append(P(rrect(28, 24, 40, 3.5, 1.7), fill=AMBER_L, fa=0.6))
+    for cx, cy in ((25, 11), (48, 7), (71, 11)):
+        k.append(P(circle(cx, cy, 3.4), fill=CORAL))
+        k.append(P(circle(cx - 0.8, cy - 0.8, 1.1), fill=WHITE, fa=0.8))
+    k.append(P("M22,48 A28,28 0 0 1 36,32", stroke=WHITE, sw=3, sa=0.5, cap="round"))
+    return k, 96, 96
+
+
+# ================================================================== GIVE-BACK ART (96 x 96)
+def tree(sh=True):
+    k = [shadow(48, 88, 26, 3.6)] if sh else []
+    k.append(P("M43,58 H53 L55,86 H41 Z", fill=BROWN if 'BROWN' in globals() else BREAD_D))
+    k.append(P(circle(48, 38, 24), fill=GREEN_M))
+    k.append(P(circle(32, 52, 17), fill=GREEN))
+    k.append(P(circle(64, 52, 17), fill=GREEN))
+    k.append(P(circle(48, 56, 16), fill=GREEN_M))
+    k.append(P(circle(40, 30, 9), fill=GREEN_L, fa=0.45))
+    k.append(heart(48, 48, 14, "#FFFFFF", fa=0.9))
+    k.append(P(spark(80, 20, 6), fill=AMBER_L))
+    k.append(P(spark(14, 34, 5), fill=GREEN_L))
+    return k, 96, 96
+
+
+# ================================================================== ROLE ART (120 x 120)
+def ngo_kitchen():
+    """A community kitchen: the receiver's picture."""
+    k = [shadow(60, 108, 46, 5)]
+    # chimney with steam
+    k.append(P(rrect(86, 22, 12, 24, 2), fill=CLAY_D))
+    k.append(P("M92,20 c-3,-4 3,-6 0,-11", stroke=WHITE, sw=3, sa=0.5, cap="round"))
+    # walls
+    k.append(P(rrect(16, 52, 88, 54, 6), fill=CREAM))
+    k.append(P(rrect(16, 92, 88, 14, (0, 0, 6, 6)), fill=CREAM_D))
+    # roof
+    k.append(P("M8,56 L60,16 L112,56 Z", fill=CLAY))
+    k.append(P("M8,56 L60,16 L60,56 Z", fill=CLAY_L, fa=0.45))
+    k.append(P(rrect(8, 52, 104, 7, 3), fill=CLAY_D))
+    # heart sign in the gable
+    k.append(P(circle(60, 40, 13), fill=WHITE))
+    k.append(heart(60, 41, 17, CORAL))
+    # door and windows
+    k.append(P(rrect(49, 72, 22, 34, (11, 11, 0, 0)), fill=GREEN_D))
+    k.append(P(circle(66, 91, 1.8), fill=AMBER_L))
+    for x in (24, 84):
+        k.append(P(rrect(x, 68, 16, 16, 3), fill=BLUE_L))
+        k.append(P("M%s,68 V84 M%s,76 H%s" % (f(x + 8), f(x), f(x + 16)), stroke=CREAM, sw=2))
+    # a bush and a bowl on the step
+    k.append(P(circle(108, 100, 9), fill=GREEN_M))
+    k.append(P(circle(100, 104, 7), fill=GREEN))
+    k.append(P(spark(14, 28, 6), fill=AMBER_L))
+    return k, 120, 120
+
 # ================================================================== HERO (176 x 144)
 def hero_food():
     k = [shadow(94, 128, 72, 7, 0.3)]
@@ -281,7 +352,7 @@ ART = {
     "illus_step_smile": polaroid, "illus_step_karma": karma,
     "illus_food_meal": bowl, "illus_food_bread": bread, "illus_food_fruit": apple,
     "illus_food_veg": carrot, "illus_food_pack": pack, "illus_food_dairy": milk,
-    "illus_hero_food": hero_food,
+    "illus_hero_food": hero_food, "illus_karma_coin": karma_coin, "illus_cause_tree": tree, "illus_role_ngo": ngo_kitchen,
     "illus_medal_bronze": lambda: medal("#D4915A"), "illus_medal_silver": lambda: medal("#B7C0C9"),
     "illus_medal_gold": lambda: medal("#F2C14E"), "illus_medal_platinum": lambda: medal("#8FD3E8"),
 }
