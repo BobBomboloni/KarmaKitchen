@@ -7,7 +7,7 @@ AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with K
 - NGO flow: intake verification scan, inventory and deliveries (demo data).
 - Karma Points, tiers and the Karma Store (local state, demo vouchers).
 - Donor home: pickup location, a swipeable banner (donate, redeem points, a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
-- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two labelled example photos are added on first launch so the wall is not empty.
+- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty.
 
 ## Not built yet
 Auto-matching, collector role, real delivery tracking (the home tracker shows a demo donation), raw-material requests, and a shared backend (so smiles can reach the donor's own phone).

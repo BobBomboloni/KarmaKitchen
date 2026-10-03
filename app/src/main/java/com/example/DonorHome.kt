@@ -1087,9 +1087,6 @@ private fun SmileThumb(smile: SmileEntry, onClick: () -> Unit) {
                 )
             }
         }
-        if (smile.isExample) {
-            ExampleTag(modifier = Modifier.align(Alignment.TopStart).padding(8.dp))
-        }
     }
 }
 
