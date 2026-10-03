@@ -53,51 +53,6 @@ private fun formatSmileDate(millis: Long): String =
 // Donor side
 // -----------------------------------------------------------------------------
 
-/** Dashboard shortcut to the Smile Wall, with the latest photos as small thumbnails. */
-@Composable
-fun SmileTeaserCard(onClick: () -> Unit) {
-    val smiles = SmileStore.smiles.toList()
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (smiles.isEmpty()) {
-                Icon(Icons.Filled.Mood, contentDescription = null, tint = SecondaryAmber, modifier = Modifier.size(32.dp))
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
-                    smiles.take(3).forEach { smile ->
-                        AsyncImage(
-                            model = File(smile.photoPath),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, SurfaceColor, CircleShape)
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Smile wall", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Text(
-                    if (smiles.isEmpty()) "See the smiles your food creates"
-                    else "${smiles.size} ${if (smiles.size == 1) "smile" else "smiles"} from people you helped",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
-            }
-            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
-        }
-    }
-}
-
 @Composable
 fun SmileWallScreen(donorName: String) {
     val smiles = SmileStore.smiles.toList()
@@ -195,7 +150,7 @@ fun SmileWallScreen(donorName: String) {
 
 /** Small label on the built-in sample photos, so they are never mistaken for real submissions. */
 @Composable
-private fun ExampleTag(modifier: Modifier = Modifier) {
+internal fun ExampleTag(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))

@@ -315,23 +315,14 @@ fun WelcomeScreen(navController: NavController) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "How it works",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                     color = TextPrimary
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                val steps = listOf(
-                    "Photograph the food" to "The app estimates servings and checks how fresh it looks, so there is nothing to type.",
-                    "Choose a pickup spot" to "Your location fills in automatically, so a volunteer can find you.",
-                    "Earn Karma Points" to "Points arrive once the NGO confirms it received the food.",
-                    "Spend them in the store" to "Swap points for gift cards and coupons from partner brands."
-                )
-
-                steps.forEachIndexed { index, (title, desc) ->
-                    if (index > 0) Spacer(modifier = Modifier.height(14.dp))
-                    Text(text = title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(text = desc, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                welcomeSteps.forEachIndexed { index, step ->
+                    if (index > 0) Spacer(modifier = Modifier.height(20.dp))
+                    WelcomeStepRow(step = step, artOnLeft = index % 2 == 0)
                 }
             }
         }
@@ -341,14 +332,14 @@ fun WelcomeScreen(navController: NavController) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Good to know",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                     color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 listOf(
                     "Pack food in clean, sealed containers so it travels safely.",
                     "Post cooked meals within 2 hours of making them.",
-                    "Check Who needs food on your home screen to see which shelters need help first."
+                    "Check Needs help tonight on your home screen to see which shelters need food first."
                 ).forEach { tip ->
                     Text(
                         text = tip,
@@ -426,253 +417,6 @@ fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
         modifier = modifier,
         contentScale = ContentScale.Fit
     )
-}
-
-@Composable
-fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    Box(
-                        modifier = Modifier.size(64.dp), // Fixed generous size for the container
-                        contentAlignment = Alignment.Center
-                    ) {
-                        KarmaInfinityLogo(
-                            // 70% of 64dp = ~45dp canvas, leaving 9.5dp padding inside the box on all sides
-                            modifier = Modifier.fillMaxSize(0.70f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(verticalArrangement = Arrangement.Center) {
-                        Text(
-                            text = remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = userProfile.name.ifBlank { "Donor" },
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                
-                val initials = userProfile.name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
-                
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .border(2.dp, MaterialTheme.colorScheme.background, CircleShape)
-                        .clickable { navController.navigate(Screen.Profile.route) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    ProfileAvatar(initials = initials)
-                }
-            }
-        }
-
-        item {
-            val tier = tierStatus(userProfile.karmaPoints)
-            val animatedKarma by animateIntAsState(userProfile.karmaPoints, tween(800), label = "karma")
-            val animatedTierProgress by animateFloatAsState(tier.progress, tween(800), label = "tierProgress")
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Screen.Tiers.route) },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("%,d".format(animatedKarma), style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
-                            Text("Karma points", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("42", style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
-                            Text("Meals shared", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    LinearProgressIndicator(
-                        progress = { animatedTierProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = PrimaryGreen,
-                        trackColor = SurfaceVariantColor
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("${tier.current} tier", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-                        }
-                        Text(
-                            if (tier.next != null) "${tier.pointsToNext} points to ${tier.next}" else "Top tier reached",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            SmileTeaserCard(onClick = { navController.goToTab(Screen.Smiles.route) })
-        }
-
-        item {
-            FoodWasteFactBar()
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Who needs food", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            androidx.compose.foundation.lazy.LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp)
-            ) {
-                itemsIndexed(dummyNgos) { index, ngo ->
-                    Box(Modifier.appearOnScreen(index)) { NgoNeedCard(ngo) }
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Happening now", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        itemsIndexed(dummyFeed) { index, feedItem ->
-            Box(Modifier.appearOnScreen(index)) { LiveFeedCard(feedItem, showDivider = index < dummyFeed.lastIndex) }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Recent donations", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-        }
-
-        itemsIndexed(recentDonations) { index, donation ->
-            Box(Modifier.appearOnScreen(index)) { DonationItemCard(donation) }
-        }
-    }
-}
-
-data class NgoNeed(val name: String, val distance: String, val status: String, val statusColor: Color, val preferredItems: String)
-val dummyNgos = listOf(
-    NgoNeed("Vadodara Relief Kitchen", "2.5 km away", "Urgent Need", DangerColor, "Cooked Meals, Fresh Produce"),
-    NgoNeed("Hope Shelter", "4.1 km away", "Accepting Donations", PrimaryGreen, "Packaged Food, Grains"),
-    NgoNeed("City Orphanage", "5.8 km away", "Accepting Donations", PrimaryGreen, "Fruits, Dairy")
-)
-
-@Composable
-fun NgoNeedCard(ngo: NgoNeed) {
-    Card(
-        modifier = Modifier.width(280.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("${ngo.name} • ${ngo.distance}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(ngo.statusColor))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(ngo.status, style = MaterialTheme.typography.bodySmall, color = ngo.statusColor, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Looking for: ${ngo.preferredItems}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-        }
-    }
-}
-
-data class LiveFeedItem(val message: String, val timeAgo: String)
-val dummyFeed = listOf(
-    LiveFeedItem("Riya donated 12 servings of veg biryani.", "4 min ago"),
-    LiveFeedItem("Arjun saved 4 meals from his canteen.", "18 min ago"),
-    LiveFeedItem("Annapurna Seva Trust received 30 chapatis from Meera.", "40 min ago"),
-    LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", "1 hour ago"),
-    LiveFeedItem("Hope Shelter reached its goal of 200 meals today.", "2 hours ago")
-)
-
-@Composable
-fun LiveFeedCard(item: LiveFeedItem, showDivider: Boolean) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-            Text(item.message, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-            Text(item.timeAgo, style = MaterialTheme.typography.bodySmall, color = TextTertiary)
-        }
-        if (showDivider) HorizontalDivider(color = OutlineColor)
-    }
-}
-
-@Composable
-fun ImpactCard(modifier: Modifier = Modifier, title: String, value: String, icon: ImageVector) {
-    Card(modifier = modifier) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-data class DonationItem(val title: String, val date: String, val status: String, val points: Int)
-
-val recentDonations = listOf(
-    DonationItem("Veg Biryani, 12 servings", "Today, 1:30 PM", "On the way", 300),
-    DonationItem("Leftover Catering Sandwiches", "Yesterday, 7:45 PM", "Delivered", 150),
-    DonationItem("Fresh Vegetable Basket", "29 Sep", "Delivered", 200),
-    DonationItem("Bakery Surplus, 20 breads", "26 Sep", "Delivered", 100)
-)
-
-@Composable
-fun DonationItemCard(item: DonationItem) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Text("${item.date} • ${item.status}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            }
-            Text("+${item.points} KP", style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"), color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -1635,17 +1379,20 @@ data class RewardItem(
     val logoScale: Float = 0.62f
 )
 
+/** What the Karma Store sells. The home screen shows the first few of these too. */
+val storeRewards = listOf(
+    RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, "logo_mcdonalds", BrandMcDonaldsRed, BrandMcDonaldsGold),
+    RewardItem("2", "Swiggy", "₹500 Gift Card", 1000, "logo_swiggy", BrandSwiggyOrange, BrandWhite),
+    RewardItem("3", "Spotify", "₹500 Gift Card", 1000, "logo_spotify", BrandSpotifyBlack, BrandSpotifyGreen),
+    RewardItem("4", "Samsung", "10% Off Coupon", 2000, "logo_samsung", BrandSamsungBlue, BrandWhite, logoScale = 0.78f),
+    RewardItem("5", "Puma", "₹1000 Gift Card", 2500, "logo_puma", BrandWhite, BrandBlack),
+    RewardItem("6", "Nike", "₹2500 Gift Card", 5000, "logo_nike", BrandWhite, BrandBlack)
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KarmaStoreScreen(userProfile: UserProfile, onProfileUpdate: (UserProfile) -> Unit) {
-    val rewards = listOf(
-        RewardItem("1", "McDonald's", "₹500 Gift Card", 1000, "logo_mcdonalds", BrandMcDonaldsRed, BrandMcDonaldsGold),
-        RewardItem("2", "Swiggy", "₹500 Gift Card", 1000, "logo_swiggy", BrandSwiggyOrange, BrandWhite),
-        RewardItem("3", "Spotify", "₹500 Gift Card", 1000, "logo_spotify", BrandSpotifyBlack, BrandSpotifyGreen),
-        RewardItem("4", "Samsung", "10% Off Coupon", 2000, "logo_samsung", BrandSamsungBlue, BrandWhite, logoScale = 0.78f),
-        RewardItem("5", "Puma", "₹1000 Gift Card", 2500, "logo_puma", BrandWhite, BrandBlack),
-        RewardItem("6", "Nike", "₹2500 Gift Card", 5000, "logo_nike", BrandWhite, BrandBlack)
-    )
+    val rewards = storeRewards
 
     var cart by remember { mutableStateOf(listOf<RewardItem>()) }
     var showCart by remember { mutableStateOf(false) }
@@ -2054,12 +1801,18 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Image(
+                            painter = painterResource(medalFor(currentTier.name)),
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Your tier",
                             style = MaterialTheme.typography.labelMedium,
                             color = TextSecondary
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = currentTier.name,
                             style = MaterialTheme.typography.headlineMedium,
@@ -2106,11 +1859,10 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                             .padding(20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
+                        Image(
+                            painter = painterResource(medalFor(tier.name)),
                             contentDescription = null,
-                            tint = tier.color,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -2168,115 +1920,6 @@ data class TierInfo(
     val color: Color
 )
 
-
-@Composable
-fun FoodWasteFactBar() {
-    var facts by remember { mutableStateOf<com.example.api.FoodWasteFacts?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
-    val factsContext = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        isLoading = true
-        // Default facts as a fallback immediately for UI responsiveness, then load actual
-        facts = com.example.api.FoodWasteFacts(
-            worldWaste = "1.05B Tonnes",
-            indiaWaste = "78M Tonnes",
-            gujaratWaste = "Loading...",
-            indiaWasteKgPerSec = 2178.2,
-            gujaratWasteKgPerSec = 112.5,
-            positiveMessage = "Fetching latest impact data..."
-        )
-        
-        try {
-            val cached = loadCachedFacts(factsContext)
-            val fetchedFacts = cached ?: com.example.api.fetchFoodWasteFacts()
-            if (fetchedFacts != null) {
-                if (cached == null) saveCachedFacts(factsContext, fetchedFacts)
-                facts = fetchedFacts
-            } else {
-                facts = com.example.api.FoodWasteFacts(
-                    worldWaste = "1.05 Billion Tonnes",
-                    indiaWaste = "78 Million Tonnes",
-                    gujaratWaste = "Thousands of Tonnes",
-                    indiaWasteKgPerSec = 2178.2,
-                    gujaratWasteKgPerSec = 112.5,
-                    positiveMessage = "Every meal you donate helps someone today."
-                )
-            }
-        } catch (e: Exception) {
-             facts = com.example.api.FoodWasteFacts(
-                worldWaste = "1.05 Billion Tonnes",
-                indiaWaste = "78 Million Tonnes",
-                gujaratWaste = "Thousands of Tonnes",
-                indiaWasteKgPerSec = 2178.2,
-                gujaratWasteKgPerSec = 112.5,
-                positiveMessage = "Every meal you donate counts."
-            )
-        } finally {
-            isLoading = false
-        }
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text("Food waste, by the numbers", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            if (isLoading && facts?.worldWaste == "1.05B Tonnes") {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Ticking timer (global to app session)
-            var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
-            LaunchedEffect(Unit) {
-                while(true) {
-                    kotlinx.coroutines.delay(200)
-                    currentTime = System.currentTimeMillis()
-                }
-            }
-            
-            val elapsedSeconds = (currentTime - AppStartTime) / 1000.0
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                FactItem(title = "World, per year", value = facts?.worldWaste ?: "")
-                
-                val indiaLive = if (facts != null) "%,d kg".format((facts!!.indiaWasteKgPerSec * elapsedSeconds).toInt()) else ""
-                FactItem(
-                    title = "India, since you opened the app",
-                    value = if (isLoading) (facts?.indiaWaste ?: "") else indiaLive
-                )
-                
-                val gujaratLive = if (facts != null) "%,d kg".format((facts!!.gujaratWasteKgPerSec * elapsedSeconds).toInt()) else ""
-                FactItem(
-                    title = "Gujarat, since you opened the app",
-                    value = if (isLoading) (facts?.gujaratWaste ?: "") else gujaratLive
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = facts?.positiveMessage ?: "",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-fun androidx.compose.foundation.layout.RowScope.FactItem(title: String, value: String) {
-    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-        Text(value, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
-        Text(title, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-    }
-}
 
 @Composable
 fun RoleSelectionScreen(navController: NavController) {

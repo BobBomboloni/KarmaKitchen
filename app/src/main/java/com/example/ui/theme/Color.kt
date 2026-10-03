@@ -52,6 +52,7 @@ val OnInfoContainer = Color(0xFFCFEBFA)
 val NonVegColor = Color(0xFFFF8A65)
 val NonVegContainer = Color(0xFF3B2218)
 val AccentGold = Color(0xFFF2C14E)            // tips, highlights, torch
+val AccentCoral = Color(0xFFFF7468)           // tint behind the "smiles" illustration
 
 // Impact tiers (silver and platinum are clearly different: neutral vs icy blue)
 val TierBronze = Color(0xFFD4915A)

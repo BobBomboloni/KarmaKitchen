@@ -16,3 +16,7 @@
 local.properties
 .env
 debug.keystore
+
+# Generated illustration output and Python caches
+tools/illustrations/out/
+__pycache__/
