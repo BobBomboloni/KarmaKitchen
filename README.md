@@ -25,7 +25,10 @@ The Karma Store shows partner logos on brand-coloured tiles. The bundled McDonal
 To add or replace a logo, put a file named `logo_<brand>` (for example `logo_nike.png`) in `app/src/main/res/drawable` and match the `logoName` of the reward in `MainActivity.kt`. A reward without a logo file shows its name on a tile.
 
 ## Illustrations
-The welcome steps, food-type row, banner and tier medals use custom flat illustrations drawn for this app (`app/src/main/res/drawable/illus_*.xml`, vector drawables, no stock art). They are generated from `tools/illustrations/art.py` (run `python3 art.py`; it writes SVG previews and the Android XML into an `out/` folder), so colours and shapes can be changed in one place. The smile photos on the Smile Wall are the only photographs in the app.
+The welcome steps, food-type row, banner and tier medals use custom flat illustrations drawn for this app (`app/src/main/res/drawable/illus_*.xml`, vector drawables, no stock art). They are generated from `tools/illustrations/art.py` (run `python3 art.py`; it writes SVG previews and the Android XML into an `out/` folder), so colours and shapes can be changed in one place. The smile photos on the Smile Wall (and the food photos below, once added) are the only photographs in the app.
+
+## Food photos
+The "What are you donating?" row on the donor Home shows a round photo for each food type when one is bundled. Add up to six JPGs to `app/src/main/res/drawable-nodpi/` named `photo_meals.jpg`, `photo_bakery.jpg`, `photo_fruit.jpg`, `photo_vegetables.jpg`, `photo_packaged.jpg` and `photo_dairy.jpg` (square crop, about 600 x 600 px, under 150 KB each). A type without a photo keeps its illustration. Use pictures you have the right to use, for example from Unsplash or Pexels, and credit the photographer here.
 
 ## Design notes
 The interface avoids the common "template" look: one typeface in real weights, sentence-case labels instead of small capitals, plain-language copy, tonal cards without borders, a single corner radius, and illustrations that carry meaning (a camera for the photo step, a map pin for pickup) instead of generic icon badges. Numbers use tabular figures rather than a monospace font.
