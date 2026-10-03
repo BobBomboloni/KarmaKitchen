@@ -449,6 +449,7 @@ fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
     )
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileEditScreen(
     profile: UserProfile,
