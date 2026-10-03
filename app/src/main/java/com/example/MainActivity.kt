@@ -553,7 +553,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(verticalArrangement = Arrangement.Center) {
                         Text(
-                            text = "GOOD MORNING,",
+                            text = remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) },
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -579,12 +579,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                         .clickable { navController.navigate(Screen.Profile.route) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    ProfileAvatar(initials = initials)
                 }
             }
         }
