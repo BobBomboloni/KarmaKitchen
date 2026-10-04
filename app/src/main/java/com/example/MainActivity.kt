@@ -119,11 +119,17 @@ val AppStartTime = System.currentTimeMillis()
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
-        )
         ThemeSettings.load(applicationContext)
+        val barStyle = if (ThemeSettings.dark) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        }
+        enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+        // The window shows through for a moment before Compose draws, so match the saved theme.
+        window.setBackgroundDrawable(
+            android.graphics.drawable.ColorDrawable(if (ThemeSettings.dark) 0xFF0E1410.toInt() else 0xFFF6F0E3.toInt())
+        )
         setContent {
             MyApplicationTheme {
                 KarmaKitchenApp()
@@ -186,9 +192,9 @@ fun KarmaKitchenApp() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Status and navigation bar icons must contrast with the screen behind them: light icons on
-    // the always-dark role screen or in dark mode, dark icons on the light palette.
-    val barsDark = ThemeSettings.dark || currentRoute == Screen.RoleSelection.route
+    // Status and navigation bar icons must contrast with the screen behind them: light icons in
+    // dark mode, dark icons on the light palette.
+    val barsDark = ThemeSettings.dark
     DisposableEffect(barsDark) {
         val barStyle = if (barsDark) {
             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -445,7 +451,7 @@ fun KarmaKitchenLogoText(
     ) {
         Text(
             text = "Karma",
-            fontFamily = PlusJakartaSans,
+            fontFamily = Fraunces,
             fontWeight = FontWeight.Bold,
             fontSize = fontSize,
             color = textColor,
@@ -453,7 +459,7 @@ fun KarmaKitchenLogoText(
         )
         Text(
             text = "Kitchen",
-            fontFamily = PlusJakartaSans,
+            fontFamily = Fraunces,
             fontWeight = FontWeight.Bold,
             fontSize = fontSize,
             color = accentColor,
@@ -786,52 +792,27 @@ data class TierInfo(
 
 @Composable
 fun RoleSelectionScreen(navController: NavController) {
-    // The logo video has a black backdrop, so this screen keeps the dark palette in either mode.
-    MyApplicationTheme(darkTheme = true) {
-        RoleSelectionContent(navController)
-    }
-}
-
-@Composable
-private fun RoleSelectionContent(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(VideoBackdrop)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Logo Video Animation
-        val context = LocalContext.current
-        val videoUri = Uri.parse("android.resource://${context.packageName}/${R.raw.logo_animation}")
-        
-        AndroidView(
-            factory = { ctx ->
-                android.widget.VideoView(ctx).apply {
-                    setVideoURI(videoUri)
-                    setOnPreparedListener { mp ->
-                        mp.isLooping = true
-                        start()
-                    }
-                    setOnErrorListener { _, _, _ -> true } // Suppress error popup if dummy file
-                }
-            },
-            modifier = Modifier.size(120.dp)
+        AnimatedKarmaLogo(size = 132.dp)
+        Spacer(modifier = Modifier.height(4.dp))
+        KarmaKitchenLogoText(
+            fontSize = 40.sp,
+            textColor = TextPrimary,
+            accentColor = PrimaryGreen
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Image(
-            painter = painterResource(id = R.drawable.ic_karmakitchen_text),
-            contentDescription = "KarmaKitchen Text Logo",
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .height(90.dp),
-            contentScale = ContentScale.Fit
-        )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Surplus food, shared with people who need it",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary
+            color = TextSecondary,
+            textAlign = TextAlign.Center
         )
         
         Spacer(modifier = Modifier.height(40.dp))

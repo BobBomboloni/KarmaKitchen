@@ -200,7 +200,3 @@ val BrandNetflixBlack = Color(0xFF141414)
 val BrandNetflixRed = Color(0xFFE50914)
 val BrandWhite = Color(0xFFFFFFFF)
 val BrandBlack = Color(0xFF000000)
-
-// The logo animation video has a pure black backdrop, so the role-selection
-// screen must stay true black to blend with it.
-val VideoBackdrop = Color(0xFF000000)

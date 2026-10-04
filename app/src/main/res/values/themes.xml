@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- The app opens on the always-dark role screen, so the window starts dark too (no white flash on launch). The screens after it follow the light or dark palette in ui/theme. -->
-    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar">
+    <!-- The app is light by default, so the window starts light too (no dark flash on launch).
+         MainActivity switches the window background to the dark colour when dark mode is saved.
+         The screens themselves follow the palettes in ui/theme. -->
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.Light.NoActionBar">
         <item name="android:windowBackground">@color/app_background</item>
         <item name="android:colorBackground">@color/app_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

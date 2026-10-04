@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Used by the window background so there is no white flash before Compose draws. -->
-    <color name="app_background">#FF0E1410</color>
+    <!-- Used by the window background so there is no dark flash before Compose draws the light screens. -->
+    <color name="app_background">#FFF6F0E3</color>
     <color name="brand_green">#FF7DC87A</color>
     <color name="brand_amber">#FFFFB347</color>
     <color name="black">#FF000000</color>
