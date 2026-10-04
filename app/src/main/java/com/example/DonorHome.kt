@@ -127,6 +127,19 @@ internal fun FoodCategory.art(): Int = when (this) {
     FoodCategory.Dairy -> R.drawable.illus_food_dairy
 }
 
+/**
+ * A real photo for this category: the drawable `photo_<category>` (for example `photo_bakery`,
+ * `photo_vegetables`) in res/drawable-nodpi. Returns 0 when that file has not been added, and the
+ * caller falls back to the illustration.
+ */
+@Composable
+internal fun FoodCategory.photo(): Int {
+    val context = LocalContext.current
+    return remember(this) {
+        context.resources.getIdentifier("photo_${name.lowercase()}", "drawable", context.packageName)
+    }
+}
+
 /** Soft background colour behind a category's illustration. */
 internal fun FoodCategory.tint(): Color = when (this) {
     FoodCategory.Meals -> SecondaryAmber
@@ -799,22 +812,34 @@ private fun CategoryRow(selected: FoodCategory?, onSelect: (FoodCategory?) -> Un
 @Composable
 private fun CategoryItem(category: FoodCategory, selected: Boolean, onClick: () -> Unit) {
     val ring by animateColorAsState(if (selected) PrimaryGreen else Color.Transparent, tween(200), label = "ring")
+    val photo = category.photo()
     Column(
         modifier = Modifier
-            .width(76.dp)
+            .width(80.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // The ring sits outside the picture so a selected photo still shows in full.
         Box(
             modifier = Modifier
-                .size(68.dp)
+                .size(76.dp)
+                .border(2.5.dp, ring, CircleShape)
+                .padding(4.dp)
                 .clip(CircleShape)
-                .background(category.tint().copy(alpha = 0.16f))
-                .border(2.dp, ring, CircleShape),
+                .background(category.tint().copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center
         ) {
-            Image(painterResource(category.art()), contentDescription = null, modifier = Modifier.size(44.dp))
+            if (photo != 0) {
+                Image(
+                    painter = painterResource(photo),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Image(painterResource(category.art()), contentDescription = null, modifier = Modifier.size(44.dp))
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(

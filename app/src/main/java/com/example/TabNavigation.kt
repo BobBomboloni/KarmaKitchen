@@ -40,6 +40,36 @@ fun NavController.goToTab(route: String) {
 }
 
 /**
+ * Which way a move between two tabs of the same bar goes: 1 when the new tab is to the right of the
+ * old one, -1 when it is to the left, and 0 when it is not a tab-to-tab move (a sub-screen, the
+ * welcome screens, or a jump between the donor and receiver bars).
+ */
+fun tabMoveDirection(fromRoute: String?, toRoute: String?): Int {
+    if (fromRoute == null || toRoute == null || fromRoute == toRoute) return 0
+    for (tabs in listOf(BottomTabs, NgoTabs)) {
+        val from = tabs.indexOfFirst { it.route == fromRoute }
+        val to = tabs.indexOfFirst { it.route == toRoute }
+        if (from >= 0 && to >= 0) return if (to > from) 1 else -1
+    }
+    return 0
+}
+
+/**
+ * The side a screen change slides in from: 1 means the new screen comes in from the right (and the
+ * old one leaves to the left), -1 means it comes in from the left. Between tabs this follows the
+ * tab order, so going back to an earlier tab slides the other way. Anything else (opening or
+ * closing a sub-screen) slides forward when opened and back when closed.
+ */
+fun slideDirection(fromRoute: String?, toRoute: String?, isPop: Boolean): Int {
+    val tabMove = tabMoveDirection(fromRoute, toRoute)
+    return when {
+        tabMove != 0 -> tabMove
+        isPop -> -1
+        else -> 1
+    }
+}
+
+/**
  * The bottom tab to highlight for a screen. Sub-screens opened from the Dashboard (Impact Tiers
  * and the profile) keep the Dashboard tab lit, so the bar never looks empty.
  */

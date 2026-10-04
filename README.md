@@ -8,7 +8,7 @@ AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with K
 - Karma coins (shown with a crowned food coin instead of "KP") and tiers.
 - Karma Store: a balance card with tier progress, popular and category browsing, reward detail sheets, a cart with the tier discount applied (5% Silver, 10% Gold, 20% Platinum), demo voucher codes you can copy, a My rewards tab that survives restarts, and give-back rewards that turn coins into meals and trees.
 - Donor home: pickup location, a swipeable banner (donate, redeem points, a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
-- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty.
+- Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty; they also show under "Sent by you" on the receiver's Smiles tab.
 
 ## Not built yet
 Auto-matching, collector role, real delivery tracking (the home tracker shows a demo donation), raw-material requests, and a shared backend (so smiles can reach the donor's own phone).
@@ -25,10 +25,15 @@ The Karma Store shows partner logos on brand-coloured tiles. The bundled McDonal
 To add or replace a logo, put a file named `logo_<brand>` (for example `logo_nike.png`) in `app/src/main/res/drawable` and match the `logoName` of the reward in `MainActivity.kt`. A reward without a logo file shows its name on a tile.
 
 ## Illustrations
-The welcome steps, food-type row, banner and tier medals use custom flat illustrations drawn for this app (`app/src/main/res/drawable/illus_*.xml`, vector drawables, no stock art). They are generated from `tools/illustrations/art.py` (run `python3 art.py`; it writes SVG previews and the Android XML into an `out/` folder), so colours and shapes can be changed in one place. The smile photos on the Smile Wall are the only photographs in the app.
+The welcome steps, food-type row, banner and tier medals use custom flat illustrations drawn for this app (`app/src/main/res/drawable/illus_*.xml`, vector drawables, no stock art). They are generated from `tools/illustrations/art.py` (run `python3 art.py`; it writes SVG previews and the Android XML into an `out/` folder), so colours and shapes can be changed in one place. The smile photos on the Smile Wall (and the food photos below, once added) are the only photographs in the app.
+
+## Food photos
+The "What are you donating?" row on the donor Home shows a round photo for each food type when one is bundled. Add up to six JPGs to `app/src/main/res/drawable-nodpi/` named `photo_meals.jpg`, `photo_bakery.jpg`, `photo_fruit.jpg`, `photo_vegetables.jpg`, `photo_packaged.jpg` and `photo_dairy.jpg` (square crop, about 600 x 600 px, under 150 KB each). A type without a photo keeps its illustration. Use pictures you have the right to use, for example from Unsplash or Pexels, and credit the photographer here.
 
 ## Design notes
 The interface avoids the common "template" look: one typeface in real weights, sentence-case labels instead of small capitals, plain-language copy, tonal cards without borders, a single corner radius, and illustrations that carry meaning (a camera for the photo step, a map pin for pickup) instead of generic icon badges. Numbers use tabular figures rather than a monospace font.
+
+Moving between tabs slides the new screen in from the side the tab sits on (going from Home to Donate comes in from the right, going back from Donate to Home comes in from the left), with the old screen fading out just before the new one fades in. The motion lives in `NavTransitions.kt` and the direction rule in `TabNavigation.kt`.
 
 The home screen borrows layout ideas from food-delivery and donation apps (location header, banner carousel, category row, request cards with progress bars, order-style tracker) while keeping one accent colour and plain copy.
 

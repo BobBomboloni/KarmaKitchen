@@ -39,9 +39,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
@@ -243,10 +241,12 @@ fun KarmaKitchenApp() {
             navController = navController,
             startDestination = Screen.RoleSelection.route,
             modifier = Modifier.padding(innerPadding),
-            enterTransition = { fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 12 } },
-            exitTransition = { fadeOut(tween(200)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(200)) + slideOutHorizontally(tween(300)) { it / 12 } }
+            // The slide direction follows the tab order (see NavTransitions.kt), so going back to an
+            // earlier tab slides the other way.
+            enterTransition = { screenEnter(isPop = false) },
+            exitTransition = { screenExit(isPop = false) },
+            popEnterTransition = { screenEnter(isPop = true) },
+            popExitTransition = { screenExit(isPop = true) }
         ) {
             composable(Screen.RoleSelection.route) { RoleSelectionScreen(navController) }
             composable(Screen.NgoDashboard.route) { NgoDashboardScreen(navController) }

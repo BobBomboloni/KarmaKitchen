@@ -32,6 +32,13 @@ class SmileStoreTest {
     }
 
     @Test
+    fun receiverListsItsOwnAndTheExampleSmilesAsSent() {
+        assertTrue(entry("a").isSentByThisNgo())
+        assertTrue(entry("b").copy(ngoName = "Hope Shelter", isExample = true).isSentByThisNgo())
+        assertFalse(entry("c").copy(ngoName = "Hope Shelter").isSentByThisNgo())
+    }
+
+    @Test
     fun brokenJsonGivesAnEmptyList() {
         assertTrue(smilesFromJson("not json").isEmpty())
     }

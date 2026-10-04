@@ -49,6 +49,12 @@ data class SmileEntry(
 )
 
 /**
+ * True when the receiver's Smiles tab lists this photo under "Sent by you". The built-in example
+ * photos count as well, so that list is not empty the first time the receiver opens it.
+ */
+fun SmileEntry.isSentByThisNgo(): Boolean = isExample || ngoName == NGO_NAME
+
+/**
  * Prototype storage for smile photos. Photos live in the app's private storage and the list
  * is kept in SharedPreferences, so the NGO side and the donor side of this phone share it.
  * A real release would replace this with a server so smiles reach the donor's own phone.
