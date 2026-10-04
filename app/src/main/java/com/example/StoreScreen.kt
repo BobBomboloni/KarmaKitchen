@@ -99,6 +99,7 @@ import com.example.ui.theme.OnPrimaryGreenContainer
 import com.example.ui.theme.OutlineColor
 import com.example.ui.theme.PrimaryGreen
 import com.example.ui.theme.PrimaryGreenLight
+import com.example.ui.theme.AmberText
 import com.example.ui.theme.SecondaryAmber
 import com.example.ui.theme.SurfaceColor
 import com.example.ui.theme.SurfaceHighColor
@@ -415,7 +416,7 @@ private fun WalletCard(
     onEarn: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val animatedBalance by animateIntAsState(balance, tween(700), label = "balance")
+    val animatedBalance = rememberCountedBalance(balance).value
     val progress by animateFloatAsState(tier.progress, tween(700), label = "tierProgress")
     val nextDiscount = tier.next?.let { tierDiscountPercent(it) } ?: 0
 
@@ -453,7 +454,7 @@ private fun WalletCard(
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
             color = SecondaryAmber,
-            trackColor = Color.White.copy(alpha = 0.14f)
+            trackColor = MealsTextPrimary.copy(alpha = 0.16f)
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -481,7 +482,7 @@ private fun WalletCard(
             )
         }
         Spacer(Modifier.height(14.dp))
-        OutlinedButton(
+        KarmaOutlinedButton(
             onClick = onEarn,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MealsTextPrimary),
@@ -560,10 +561,8 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
         style = MaterialTheme.typography.labelLarge,
         color = if (selected) OnPrimaryGreenContainer else TextSecondary,
         modifier = Modifier
-            .clip(CircleShape)
-            .background(background)
+            .bounceCard(CircleShape, onClick, background)
             .border(1.dp, border, CircleShape)
-            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }
@@ -578,9 +577,7 @@ private fun FeaturedCard(item: RewardItem, discount: Int, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(width = 264.dp, height = 148.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(item.tileColor)
-            .clickable(onClick = onClick)
+            .bounceCard(RoundedCornerShape(20.dp), onClick, item.tileColor)
     ) {
         BrandLogoTile(
             item,
@@ -639,9 +636,7 @@ private fun RewardCard(
     val price = discountedPrice(item.points, discount)
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceColor)
-            .clickable(onClick = onOpen)
+            .bounceCard(RoundedCornerShape(16.dp), onOpen, SurfaceColor)
     ) {
         Box(
             modifier = Modifier
@@ -775,9 +770,7 @@ private fun CartBar(count: Int, total: Int, onOpen: () -> Unit, modifier: Modifi
         modifier = modifier
             .padding(horizontal = 20.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(PrimaryGreen)
-            .clickable(onClick = onOpen)
+            .bounceCard(RoundedCornerShape(18.dp), onOpen, PrimaryGreen)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -886,7 +879,7 @@ private fun RewardSheet(
 
             Spacer(Modifier.height(24.dp))
             if (short == 0) {
-                Button(
+                KarmaButton(
                     onClick = onAdd,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -908,7 +901,7 @@ private fun RewardSheet(
                     color = TextSecondary
                 )
                 Spacer(Modifier.height(10.dp))
-                Button(
+                KarmaButton(
                     onClick = onEarn,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -986,7 +979,7 @@ private fun CartPage(
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(16.dp))
-                OutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("Browse rewards") }
+                KarmaOutlinedButton(onClick = onBack, shape = RoundedCornerShape(12.dp)) { Text("Browse rewards") }
             }
         } else {
             LazyColumn(
@@ -1034,7 +1027,7 @@ private fun CartPage(
                         SummaryRow("Subtotal") { KarmaAmount(formatKarma(subtotal), style = MaterialTheme.typography.bodyMedium, color = TextPrimary) }
                         if (saved > 0) {
                             SummaryRow("Tier discount ($discount%)") {
-                                KarmaAmount("-" + formatKarma(saved), style = MaterialTheme.typography.bodyMedium, color = SecondaryAmber)
+                                KarmaAmount("-" + formatKarma(saved), style = MaterialTheme.typography.bodyMedium, color = AmberText)
                             }
                         }
                         HorizontalDivider(color = OutlineColor)
@@ -1054,7 +1047,7 @@ private fun CartPage(
 
             Column {
                 HorizontalDivider(color = OutlineColor)
-                Button(
+                KarmaButton(
                     onClick = onCheckout,
                     enabled = left >= 0,
                     modifier = Modifier
@@ -1139,7 +1132,7 @@ private fun ReceiptPage(vouchers: List<Voucher>, email: String, onMyRewards: () 
         items(vouchers, key = { it.id }) { voucher -> VoucherCard(voucher) }
         item {
             Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+                KarmaButton(
                     onClick = onMyRewards,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1147,7 +1140,7 @@ private fun ReceiptPage(vouchers: List<Voucher>, email: String, onMyRewards: () 
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
                 ) { Text("See my rewards", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
-                OutlinedButton(
+                KarmaOutlinedButton(
                     onClick = onDone,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1177,7 +1170,7 @@ private fun EmptyRewards(onBrowse: () -> Unit) {
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onBrowse, shape = RoundedCornerShape(12.dp)) { Text("Browse rewards") }
+        KarmaOutlinedButton(onClick = onBrowse, shape = RoundedCornerShape(12.dp)) { Text("Browse rewards") }
     }
 }
 

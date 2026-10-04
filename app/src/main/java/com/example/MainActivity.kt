@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
+        ThemeSettings.load(applicationContext)
         setContent {
             MyApplicationTheme {
                 KarmaKitchenApp()
@@ -158,6 +159,12 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 
 }
 
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext?.findActivity()
+    else -> null
+}
+
 @Composable
 fun KarmaKitchenApp() {
     val navController = rememberNavController()
@@ -178,6 +185,22 @@ fun KarmaKitchenApp() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Status and navigation bar icons must contrast with the screen behind them: light icons on
+    // the always-dark role screen or in dark mode, dark icons on the light palette.
+    val barsDark = ThemeSettings.dark || currentRoute == Screen.RoleSelection.route
+    DisposableEffect(barsDark) {
+        val barStyle = if (barsDark) {
+            SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        }
+        (appContext.findActivity() as? ComponentActivity)?.enableEdgeToEdge(
+            statusBarStyle = barStyle,
+            navigationBarStyle = barStyle
+        )
+        onDispose { }
+    }
 
     // The bar shows the donor tabs or the receiver tabs. It keeps the last set while it slides away.
     val tabHolder = remember { arrayOf<List<Screen>>(BottomTabs) }
@@ -350,7 +373,7 @@ fun WelcomeScreen(navController: NavController) {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                welcomeSteps.forEachIndexed { index, step ->
+                welcomeSteps().forEachIndexed { index, step ->
                     if (index > 0) Spacer(modifier = Modifier.height(20.dp))
                     WelcomeStepRow(step = step, artOnLeft = index % 2 == 0)
                 }
@@ -384,7 +407,7 @@ fun WelcomeScreen(navController: NavController) {
         // Start button
         item {
             Spacer(modifier = Modifier.height(4.dp))
-            Button(
+            KarmaButton(
                 onClick = {
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Welcome.route) { inclusive = true }
@@ -541,9 +564,28 @@ fun ProfileEditScreen(
             }
         }
         
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceColor)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Dark mode", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text("Easier on the eyes at night", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+            Switch(
+                checked = ThemeSettings.dark,
+                onCheckedChange = { ThemeSettings.set(context, it) }
+            )
+        }
+
         Spacer(modifier = Modifier.weight(1f))
         
-        Button(
+        KarmaButton(
             onClick = {
                 onProfileUpdate(profile.copy(name = name, email = email, phone = phone, address = address))
                 onBack()
@@ -638,7 +680,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                             text = currentTier.name,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = currentTier.color
+                            color = readableInk(currentTier.color)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         KarmaAmount(
@@ -696,7 +738,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                                     text = tier.name,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = tier.color
+                                    color = readableInk(tier.color)
                                 )
                                 if (tier.name == currentTier.name) {
                                     Box(
@@ -709,7 +751,7 @@ fun TierListScreen(navController: NavController, userProfile: UserProfile) {
                                             text = "Current",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = BackgroundColor
+                                            color = OnTierColor
                                         )
                                     }
                                 }
@@ -744,6 +786,14 @@ data class TierInfo(
 
 @Composable
 fun RoleSelectionScreen(navController: NavController) {
+    // The logo video has a black backdrop, so this screen keeps the dark palette in either mode.
+    MyApplicationTheme(darkTheme = true) {
+        RoleSelectionContent(navController)
+    }
+}
+
+@Composable
+private fun RoleSelectionContent(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()

@@ -523,7 +523,7 @@ private fun PrimaryAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Button(
+    KarmaButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.height(52.dp),
@@ -536,7 +536,7 @@ private fun PrimaryAction(
 
 @Composable
 private fun SecondaryAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedButton(
+    KarmaOutlinedButton(
         onClick = onClick,
         modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(14.dp),
@@ -632,7 +632,10 @@ private fun PhotoStep(
             }
 
             when {
-                draft.analyzing -> item { AnalyzingCard(photo) }
+                draft.analyzing -> {
+                    item { AnalyzingCard(photo) }
+                    item { ResultSkeleton() }
+                }
 
                 result != null -> {
                     item { ResultPhoto(photo, result, onRetake = onRescan) }
@@ -705,9 +708,7 @@ private fun ViewfinderCard(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(250.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(SurfaceColor)
-            .clickable(onClick = onClick),
+            .bounceCard(RoundedCornerShape(24.dp), onClick, SurfaceColor),
         contentAlignment = Alignment.Center
     ) {
         ViewfinderCorners(PrimaryGreen.copy(alpha = 0.85f), Modifier.fillMaxSize())
@@ -879,6 +880,28 @@ private fun AnalyzingCard(photo: Uri?) {
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         )
     }
+}
+
+/** Grey blocks in the shape of the result, shimmering while the AI is still looking at the photo. */
+@Composable
+internal fun ResultSkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PlaceholderBlock(Modifier.fillMaxWidth(0.55f).height(24.dp))
+        PlaceholderBlock(Modifier.fillMaxWidth(0.85f).height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            repeat(3) { PlaceholderBlock(Modifier.weight(1f).height(68.dp), corner = 14.dp) }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderBlock(modifier: Modifier, corner: androidx.compose.ui.unit.Dp = 8.dp) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(corner))
+            .background(SurfaceVariantColor)
+            .shimmer()
+    )
 }
 
 @Composable

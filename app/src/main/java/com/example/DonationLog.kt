@@ -22,6 +22,11 @@ object DonationLog {
         if (index >= 0) submitted[index] = change(submitted[index])
     }
 
+    /** The donor has seen that donation [id] was delivered, so its card can leave the home screen. */
+    fun acknowledge(id: String) {
+        update(id) { it.copy(acknowledged = true) }
+    }
+
     /** Queue the coins for donation [id]; the app adds them to the donor's balance. */
     fun credit(id: String) {
         submitted.firstOrNull { it.id == id }?.let { pendingCredits.add(it.points) }

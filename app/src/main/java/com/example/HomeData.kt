@@ -83,7 +83,9 @@ data class DonationItem(
     /** 0 = posted and waiting for a volunteer, 1 = picked up and on the way, 2 = delivered. */
     val stage: Int = 1,
     /** Links a donation made on this phone to the NGO's copy of it. */
-    val id: String = java.util.UUID.randomUUID().toString()
+    val id: String = java.util.UUID.randomUUID().toString(),
+    /** True once the donor has seen the "Delivered" card on the home screen and dismissed it. */
+    val acknowledged: Boolean = false
 ) {
     val inTransit: Boolean get() = status != STATUS_DELIVERED
 }

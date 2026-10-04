@@ -52,17 +52,19 @@ fun ScannerAnimation(modifier: Modifier = Modifier) {
     )
 
     // Wavy line color animation (4.8s)
+    val calmColor = PrimaryGreen
+    val alertColor = WarningColor
     val waveColor by infiniteTransition.animateColor(
-        initialValue = PrimaryGreen,
-        targetValue = PrimaryGreen, 
+        initialValue = calmColor,
+        targetValue = calmColor,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 durationMillis = 4800
-                PrimaryGreen at 0
-                PrimaryGreen at 2160 // 45%
-                WarningColor at 2400 // 50%
-                WarningColor at 4560 // 95%
-                PrimaryGreen at 4800 // 100%
+                calmColor at 0
+                calmColor at 2160 // 45%
+                alertColor at 2400 // 50%
+                alertColor at 4560 // 95%
+                calmColor at 4800 // 100%
             },
             repeatMode = RepeatMode.Restart
         ),

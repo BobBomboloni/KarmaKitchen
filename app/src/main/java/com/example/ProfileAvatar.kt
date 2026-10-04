@@ -33,6 +33,9 @@ fun ProfileAvatar(initials: String, modifier: Modifier = Modifier) {
         return
     }
 
+    val body = PrimaryGreen
+    val face = OnPrimaryGreenContainer
+    val features = OnPrimaryGreen
     Canvas(modifier = modifier.fillMaxSize().semantics { contentDescription = "Profile" }) {
         val w = size.width
         val centerX = w / 2f
@@ -41,14 +44,14 @@ fun ProfileAvatar(initials: String, modifier: Modifier = Modifier) {
 
         // Shoulders; the lower part is clipped away by the round container.
         drawOval(
-            color = PrimaryGreen,
+            color = body,
             topLeft = Offset(w * 0.14f, size.height * 0.64f),
             size = Size(w * 0.72f, size.height * 0.72f)
         )
         // Head with a hair cap.
-        drawCircle(color = OnPrimaryGreenContainer, radius = headRadius, center = headCenter)
+        drawCircle(color = face, radius = headRadius, center = headCenter)
         drawArc(
-            color = PrimaryGreen,
+            color = body,
             startAngle = 180f,
             sweepAngle = 180f,
             useCenter = true,
@@ -57,10 +60,10 @@ fun ProfileAvatar(initials: String, modifier: Modifier = Modifier) {
         )
         // A small smile.
         val eyeRadius = w * 0.025f
-        drawCircle(OnPrimaryGreen, eyeRadius, Offset(centerX - w * 0.07f, headCenter.y + w * 0.02f))
-        drawCircle(OnPrimaryGreen, eyeRadius, Offset(centerX + w * 0.07f, headCenter.y + w * 0.02f))
+        drawCircle(features, eyeRadius, Offset(centerX - w * 0.07f, headCenter.y + w * 0.02f))
+        drawCircle(features, eyeRadius, Offset(centerX + w * 0.07f, headCenter.y + w * 0.02f))
         drawArc(
-            color = OnPrimaryGreen,
+            color = features,
             startAngle = 20f,
             sweepAngle = 140f,
             useCenter = false,

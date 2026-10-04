@@ -1,10 +1,28 @@
 package com.example
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.example.api.FoodWasteFacts
 
 private const val PREFS = "karmakitchen_prefs"
 private const val FACTS_MAX_AGE_MS = 24L * 60 * 60 * 1000
+
+/** Whether the dark palette is on. Light is the default; the choice is saved and switched in Profile. */
+object ThemeSettings {
+    var dark by mutableStateOf(false)
+        private set
+
+    fun load(context: Context) {
+        dark = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("dark_theme", false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        dark = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("dark_theme", value).apply()
+    }
+}
 
 fun loadProfile(context: Context): UserProfile {
     val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

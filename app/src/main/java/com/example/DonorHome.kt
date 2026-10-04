@@ -1,7 +1,14 @@
 package com.example
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -10,6 +17,9 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -39,6 +49,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
@@ -64,6 +75,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -98,6 +110,10 @@ import com.example.ui.theme.OutlineColor
 import com.example.ui.theme.OutlineStrong
 import com.example.ui.theme.PrimaryGreen
 import com.example.ui.theme.PrimaryGreenLight
+import com.example.ui.theme.AmberText
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material3.TextButton
 import com.example.ui.theme.SecondaryAmber
 import com.example.ui.theme.SurfaceColor
 import com.example.ui.theme.SurfaceVariantColor
@@ -141,6 +157,7 @@ internal fun FoodCategory.photo(): Int {
 }
 
 /** Soft background colour behind a category's illustration. */
+@Composable
 internal fun FoodCategory.tint(): Color = when (this) {
     FoodCategory.Meals -> SecondaryAmber
     FoodCategory.Bakery -> Color(0xFFD99A52)
@@ -173,7 +190,10 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
     val smiles = SmileStore.smiles.toList()
     // Donations made in this session (from the Donate screen) come first.
     val donations = DonationLog.submitted.toList() + recentDonations
-    val activeDonation = donations.firstOrNull { it.inTransit }
+    // A donation made here comes first; once it is delivered its card stays until the donor taps "Got it".
+    val activeDonation = DonationLog.submitted.firstOrNull { it.inTransit }
+        ?: DonationLog.submitted.firstOrNull { it.status == STATUS_DELIVERED && !it.acknowledged }
+        ?: recentDonations.firstOrNull { it.inTransit }
 
     val openDonate = { navController.goToTab(Screen.Donate.route) }
     val openStore = { navController.goToTab(Screen.Store.route) }
@@ -201,14 +221,24 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 HeroCarousel(
                     points = userProfile.karmaPoints,
                     facts = facts,
+                    latestSmile = smiles.firstOrNull(),
                     onDonate = { openDonate() },
-                    onStore = { openStore() }
+                    onStore = { openStore() },
+                    onSmiles = { openSmiles() }
                 )
             }
         }
 
         activeDonation?.let { donation ->
-            item { ActiveDonationCard(donation, Modifier.padding(horizontal = ScreenPadding)) }
+            item(key = "tracker") {
+                ActiveDonationCard(
+                    donation = donation,
+                    onDismiss = { DonationLog.acknowledge(donation.id) },
+                    modifier = Modifier
+                        .padding(horizontal = ScreenPadding)
+                        .animateItem()
+                )
+            }
         }
 
         item {
@@ -230,6 +260,8 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
             )
         }
 
+        item { SmilesSection(smiles = smiles, onOpen = { openSmiles() }) }
+
         item {
             YourImpactCard(
                 profile = userProfile,
@@ -238,8 +270,6 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 modifier = Modifier.padding(horizontal = ScreenPadding)
             )
         }
-
-        item { SmilesSection(smiles = smiles, onOpen = { openSmiles() }) }
 
         item { RewardsSection(points = userProfile.karmaPoints, onOpenStore = { openStore() }) }
 
@@ -360,17 +390,32 @@ private fun HomeHeader(
 
 @Composable
 private fun KarmaPill(points: Int, onClick: () -> Unit) {
+    // Counts up when coins have arrived since the balance was last on screen. The pill briefly
+    // widens to show how many ("+600") and then settles back.
+    val counted = rememberCountedBalance(points)
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(SurfaceColor)
-            .clickable(onClick = onClick)
+            .bounceCard(CircleShape, onClick, SurfaceColor)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        AnimatedVisibility(
+            visible = counted.showGain,
+            enter = fadeIn(tween(250)) + expandHorizontally(tween(350)),
+            exit = fadeOut(tween(400)) + shrinkHorizontally(tween(450))
+        ) {
+            Row {
+                Text(
+                    "+" + "%,d".format(counted.gain),
+                    style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
+                    color = PrimaryGreen
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+        }
         Text(
-            text = "%,d".format(points),
-            style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+            text = "%,d".format(counted.value),
+            style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
             color = TextPrimary
         )
         Spacer(Modifier.width(5.dp))
@@ -401,12 +446,30 @@ private fun HomeGreeting(name: String) {
 // Hero carousel
 // -----------------------------------------------------------------------------
 
+private enum class HeroSlide { Smile, Donate, Rewards, Fact }
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Unit, onStore: () -> Unit) {
+private fun HeroCarousel(
+    points: Int,
+    facts: FoodWasteFacts,
+    latestSmile: SmileEntry?,
+    onDonate: () -> Unit,
+    onStore: () -> Unit,
+    onSmiles: () -> Unit
+) {
+    // The newest smile photo leads the banner, because it is the best proof that a donation mattered.
+    val slides = remember(latestSmile != null) {
+        buildList {
+            if (latestSmile != null) add(HeroSlide.Smile)
+            add(HeroSlide.Donate)
+            add(HeroSlide.Rewards)
+            add(HeroSlide.Fact)
+        }
+    }
     // The pager has many "virtual" pages so it can keep sliding forward and loop without ever
     // rewinding across the slides. Slide number = page % slideCount.
-    val slideCount = 3
+    val slideCount = slides.size
     val virtualPages = slideCount * 1000
     val pagerState = rememberPagerState(
         initialPage = virtualPages / 2 - (virtualPages / 2) % slideCount,
@@ -430,10 +493,11 @@ private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Uni
             contentPadding = PaddingValues(horizontal = ScreenPadding),
             pageSpacing = 12.dp
         ) { page ->
-            when (page % slideCount) {
-                0 -> DonateSlide(onDonate)
-                1 -> RewardsSlide(points, onStore)
-                else -> FactSlide(facts)
+            when (slides[page % slideCount]) {
+                HeroSlide.Smile -> if (latestSmile != null) SmileSlide(latestSmile, onSmiles)
+                HeroSlide.Donate -> DonateSlide(onDonate)
+                HeroSlide.Rewards -> RewardsSlide(points, onStore)
+                HeroSlide.Fact -> FactSlide(facts)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -442,6 +506,68 @@ private fun HeroCarousel(points: Int, facts: FoodWasteFacts, onDonate: () -> Uni
             current = pagerState.currentPage % slideCount,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
+    }
+}
+
+/** "Dal Khichdi, 30 servings" -> "Dal Khichdi". */
+private fun dishName(donationTitle: String): String = donationTitle.substringBefore(",").trim()
+
+@Composable
+private fun SmileSlide(smile: SmileEntry, onOpen: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(HeroHeight)
+            .bounceCard(RoundedCornerShape(24.dp), onOpen)
+    ) {
+        AsyncImage(
+            model = File(smile.photoPath),
+            contentDescription = "Photo from ${smile.ngoName}",
+            contentScale = ContentScale.Crop,
+            alignment = BiasAlignment(0f, -0.45f),
+            modifier = Modifier.fillMaxSize()
+        )
+        // A dark fade at the bottom keeps the white text readable on any photo.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(0.3f to Color.Transparent, 1f to Color(0xE6000000)))
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 16.dp, bottom = 18.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "From ${smile.ngoName}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "${smile.people} people ate your ${dishName(smile.donationTitle)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Filled.ArrowForward, contentDescription = "See all smiles", tint = Color(0xFF2A2118), modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 
@@ -505,7 +631,7 @@ private fun DonateSlide(onDonate: () -> Unit) {
                 modifier = Modifier.widthIn(max = 160.dp)
             )
             Spacer(Modifier.height(14.dp))
-            Button(
+            KarmaButton(
                 onClick = onDonate,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = OnPrimaryGreen),
@@ -540,7 +666,7 @@ private fun RewardsSlide(points: Int, onOpenStore: () -> Unit) {
                 color = TextPrimary
             )
             Spacer(Modifier.height(14.dp))
-            Button(
+            KarmaButton(
                 onClick = onOpenStore,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SecondaryAmber, contentColor = OnSecondaryAmber),
@@ -656,9 +782,11 @@ private fun rememberFoodWasteFacts(): State<FoodWasteFacts> {
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modifier) {
+private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val steps = listOf("Posted", "Picked up", "Delivered")
-    val stage = donation.stage
+    val delivered = donation.status == STATUS_DELIVERED
+    // Past the last step, so every dot shows a tick once the food has arrived.
+    val stage = if (delivered) steps.size else donation.stage
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -678,7 +806,11 @@ private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modi
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (stage == 0) "Waiting for a volunteer" else "Donation on its way",
+                        when {
+                            delivered -> "Delivered"
+                            stage == 0 -> "Waiting for a volunteer"
+                            else -> "Donation on its way"
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         color = PrimaryGreen
                     )
@@ -690,12 +822,20 @@ private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modi
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        if (stage == 0) "Nearby NGOs can see it now" else "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}",
+                        when {
+                            delivered -> "${donation.ngo} has it. +${"%,d".format(donation.points)} coins added."
+                            stage == 0 -> "Nearby NGOs can see it now"
+                            else -> "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+                if (delivered) {
+                    Spacer(Modifier.width(8.dp))
+                    DeliveredStamp()
                 }
                 donation.etaMinutes?.let { eta ->
                     Spacer(Modifier.width(8.dp))
@@ -711,7 +851,43 @@ private fun ActiveDonationCard(donation: DonationItem, modifier: Modifier = Modi
             }
             Spacer(Modifier.height(16.dp))
             TrackerSteps(labels = steps, stage = stage)
+            if (delivered) {
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("Got it", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
+                }
+            }
         }
+    }
+}
+
+/** A rubber stamp that slams down and settles, so the arrival of the food feels like an event. */
+@Composable
+private fun DeliveredStamp() {
+    val scale = remember { Animatable(2.6f) }
+    val fade = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        launch { fade.animateTo(1f, tween(140)) }
+        scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                alpha = fade.value
+                rotationZ = -9f
+            }
+            .border(2.dp, PrimaryGreen, RoundedCornerShape(8.dp))
+            .padding(3.dp)
+            .border(1.dp, PrimaryGreen, RoundedCornerShape(6.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Text(
+            "Delivered",
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 15.sp),
+            color = PrimaryGreen
+        )
     }
 }
 
@@ -816,8 +992,7 @@ private fun CategoryItem(category: FoodCategory, selected: Boolean, onClick: () 
     Column(
         modifier = Modifier
             .width(80.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
+            .bounceCard(RoundedCornerShape(16.dp), onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // The ring sits outside the picture so a selected photo still shows in full.
@@ -956,7 +1131,7 @@ private fun NgoRequestCard(ngo: NgoRequest, onDonate: () -> Unit, modifier: Modi
                         color = if (ngo.urgent) DangerColor else TextTertiary
                     )
                 }
-                Button(
+                KarmaButton(
                     onClick = onDonate,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen),
@@ -996,12 +1171,12 @@ private fun YourImpactCard(
     modifier: Modifier = Modifier
 ) {
     val tier = tierStatus(profile.karmaPoints)
-    val animatedKarma by animateIntAsState(profile.karmaPoints, tween(800), label = "karma")
+    val animatedKarma = rememberCountedBalance(profile.karmaPoints).value
     val animatedProgress by animateFloatAsState(tier.progress, tween(800), label = "tierProgress")
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .bounceCard(RoundedCornerShape(16.dp), onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceColor)
     ) {
@@ -1069,9 +1244,7 @@ private fun SmilesSection(smiles: List<SmileEntry>, onOpen: () -> Unit) {
                 modifier = Modifier
                     .padding(horizontal = ScreenPadding)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceColor)
-                    .clickable(onClick = onOpen)
+                    .bounceCard(RoundedCornerShape(16.dp), onOpen, SurfaceColor)
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1098,37 +1271,38 @@ private fun SmilesSection(smiles: List<SmileEntry>, onOpen: () -> Unit) {
 private fun SmileThumb(smile: SmileEntry, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(width = 156.dp, height = 204.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .size(width = 196.dp, height = 252.dp)
+            .bounceCard(RoundedCornerShape(20.dp), onClick)
     ) {
         AsyncImage(
             model = File(smile.photoPath),
             contentDescription = "Photo from ${smile.ngoName}",
             contentScale = ContentScale.Crop,
+            alignment = BiasAlignment(0f, -0.3f),
             modifier = Modifier.fillMaxSize()
         )
+        // The caption sits on the photo, so it is always white whatever the app colours are.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
-                .padding(start = 12.dp, end = 12.dp, top = 28.dp, bottom = 12.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000))))
+                .padding(start = 14.dp, end = 14.dp, top = 40.dp, bottom = 14.dp)
         ) {
             Column {
                 Text(
                     smile.ngoName,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    timeAgoLabel(smile.sentAt),
+                    "${smile.people} people fed · ${timeAgoLabel(smile.sentAt)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextPrimary.copy(alpha = 0.8f),
-                    maxLines = 1
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1160,9 +1334,7 @@ private fun VoucherCard(item: RewardItem, canAfford: Boolean, onClick: () -> Uni
     Column(
         modifier = Modifier
             .width(150.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceColor)
-            .clickable(onClick = onClick)
+            .bounceCard(RoundedCornerShape(16.dp), onClick, SurfaceColor)
     ) {
         Box(
             modifier = Modifier
@@ -1275,7 +1447,7 @@ private fun CommunityCard(yourMeals: Int, modifier: Modifier = Modifier) {
 
 @Composable
 private fun DonorRow(rank: Int, name: String, meals: Int) {
-    val tints = listOf(SecondaryAmber, InfoColor, PrimaryGreen)
+    val tints = listOf(AmberText, InfoColor, PrimaryGreen)
     val tint = tints[(rank - 1).coerceIn(0, tints.lastIndex)]
     val initials = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
     Row(

@@ -77,6 +77,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -108,6 +109,8 @@ import com.example.ui.theme.OnSecondaryAmber
 import com.example.ui.theme.OutlineColor
 import com.example.ui.theme.PrimaryGreen
 import com.example.ui.theme.PrimaryGreenLight
+import com.example.ui.theme.AmberText
+import com.example.ui.theme.readableInk
 import com.example.ui.theme.SecondaryAmber
 import com.example.ui.theme.SurfaceColor
 import com.example.ui.theme.SurfaceHighColor
@@ -249,9 +252,7 @@ fun RoleCard(title: String, subtitle: String, art: Int, tint: Color, onClick: ()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(SurfaceColor)
-            .clickable(onClick = onClick)
+            .bounceCard(RoundedCornerShape(20.dp), onClick, SurfaceColor)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -543,7 +544,7 @@ private fun BroadcastCard() {
                 Text(
                     if (NgoState.broadcasting) "Donors near you can see it on their home screen" else "Tell donors what you need most tonight",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (NgoState.broadcasting) SecondaryAmber else TextSecondary
+                    color = if (NgoState.broadcasting) AmberText else TextSecondary
                 )
             }
             Switch(
@@ -615,9 +616,7 @@ private fun AttentionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceColor)
-            .clickable(onClick = onClick)
+            .bounceCard(RoundedCornerShape(16.dp), onClick, SurfaceColor)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -638,7 +637,7 @@ private fun AttentionRow(
         Text(
             "$count",
             style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
-            color = tint
+            color = readableInk(tint)
         )
         Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
     }
@@ -661,6 +660,8 @@ private fun WeeklyChart(values: List<Int>, labels: List<String>) {
             )
         }
         Spacer(Modifier.height(14.dp))
+        val currentBar = PrimaryGreen
+        val otherBars = OutlineColor
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -671,7 +672,7 @@ private fun WeeklyChart(values: List<Int>, labels: List<String>) {
             values.forEachIndexed { index, value ->
                 val barHeight = size.height * (value.toFloat() / maxValue) * grow
                 drawRoundRect(
-                    color = if (index == values.lastIndex) PrimaryGreen else Color.White.copy(alpha = 0.14f),
+                    color = if (index == values.lastIndex) currentBar else otherBars,
                     topLeft = Offset(index * (barWidth + gap), size.height - barHeight),
                     size = Size(barWidth, barHeight),
                     cornerRadius = CornerRadius(6.dp.toPx())
@@ -974,14 +975,14 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
         }
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
+            KarmaOutlinedButton(
                 onClick = onDecline,
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
                 shape = RoundedCornerShape(12.dp)
             ) { Text("Decline", style = MaterialTheme.typography.labelLarge) }
-            Button(
+            KarmaButton(
                 onClick = onAccept,
                 modifier = Modifier
                     .weight(2f)
@@ -1018,7 +1019,7 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
         Spacer(Modifier.height(14.dp))
         DeliverySteps(listOf("Accepted", "Picked up", "Arriving"), stage)
         Spacer(Modifier.height(14.dp))
-        Button(
+        KarmaButton(
             onClick = onLogIntake,
             modifier = Modifier
                 .fillMaxWidth()
@@ -1146,7 +1147,7 @@ private fun IntakeSheet(title: String, summary: IntakeSummary, onConfirm: () -> 
                 }
             }
             Spacer(Modifier.height(24.dp))
-            Button(
+            KarmaButton(
                 onClick = onConfirm,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1193,7 +1194,7 @@ fun NgoStockScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 StockCount("$fresh", "Fresh", PrimaryGreen, Modifier.weight(1f))
-                StockCount("$soon", "Expiring soon", SecondaryAmber, Modifier.weight(1f))
+                StockCount("$soon", "Expiring soon", AmberText, Modifier.weight(1f))
                 StockCount("$expired", "Expired", DangerColor, Modifier.weight(1f))
             }
         }
@@ -1229,9 +1230,10 @@ private fun StockCard(item: StockItem, onDone: () -> Unit, modifier: Modifier = 
     val status = stockStatus(item.hoursLeft)
     val color = when (status) {
         StockStatus.Fresh -> PrimaryGreen
-        StockStatus.Soon -> SecondaryAmber
+        StockStatus.Soon -> AmberText
         StockStatus.Expired -> DangerColor
     }
+    val barColor = if (status == StockStatus.Soon) SecondaryAmber else color
     val progress by animateFloatAsState((item.hoursLeft / 72f).coerceIn(0f, 1f), tween(600), label = "shelf")
     Row(
         modifier = modifier
@@ -1253,7 +1255,7 @@ private fun StockCard(item: StockItem, onDone: () -> Unit, modifier: Modifier = 
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = color,
+                color = barColor,
                 trackColor = SurfaceVariantColor
             )
             Spacer(Modifier.height(4.dp))
@@ -1340,7 +1342,7 @@ fun NgoSmilesScreen(navController: NavController) {
                         )
                     }
                     Spacer(Modifier.width(8.dp))
-                    Button(
+                    KarmaButton(
                         onClick = { navController.navigate(Screen.SendSmile.routeFor(donation.id)) },
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp),
@@ -1366,35 +1368,36 @@ fun NgoSmilesScreen(navController: NavController) {
             }
         } else {
             items(sent, key = { it.id }) { smile ->
-                Row(
+                // Photo first: the picture is what the donor sees, so the NGO sees it the same way.
+                Column(
                     modifier = Modifier
                         .padding(horizontal = Gutter)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(SurfaceColor)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
                         model = File(smile.photoPath),
-                        contentDescription = null,
+                        contentDescription = "Photo sent for ${smile.donationTitle}",
                         contentScale = ContentScale.Crop,
+                        alignment = BiasAlignment(0f, -0.35f),
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .fillMaxWidth()
+                            .height(190.dp)
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                         Text(smile.donationTitle, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             "“${smile.message}”",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(Modifier.height(6.dp))
                         Text(
-                            SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(Date(smile.sentAt)),
+                            "${smile.people} people fed · " + SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(Date(smile.sentAt)),
                             style = MaterialTheme.typography.labelSmall,
                             color = TextTertiary
                         )

@@ -162,7 +162,7 @@ private fun SmileStat(label: String, value: String, modifier: Modifier = Modifie
             value,
             style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.Bold,
-            color = SecondaryAmber
+            color = AmberText
         )
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
     }
@@ -198,7 +198,7 @@ private fun SmilePhotoCard(entry: SmileEntry, onClick: () -> Unit) {
                     entry.ngoName,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = SecondaryAmber,
+                    color = AmberText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -239,7 +239,7 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
                         color = TextPrimary
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(entry.ngoName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = SecondaryAmber)
+                    Text(entry.ngoName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = AmberText)
                     Text(
                         "${entry.people} people fed • ${entry.donationTitle}",
                         style = MaterialTheme.typography.bodySmall,
@@ -251,7 +251,7 @@ private fun SmileDetailDialog(entry: SmileEntry, onDismiss: () -> Unit, onRemove
                         TextButton(onClick = { if (confirmRemove) onRemove() else confirmRemove = true }) {
                             Text(if (confirmRemove) "Tap again to remove" else "Remove photo", color = DangerColor)
                         }
-                        Button(
+                        KarmaButton(
                             onClick = onDismiss,
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
@@ -306,10 +306,10 @@ fun CameraGate(onCaptured: (Uri) -> Unit, onCancel: () -> Unit, onError: (String
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                        KarmaOutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
                             Text("Cancel")
                         }
-                        Button(
+                        KarmaButton(
                             onClick = { permission.launchPermissionRequest() },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp),
@@ -492,7 +492,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
+            KarmaButton(
                 onClick = { showCamera = true },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
@@ -502,7 +502,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (photoUri == null) "Take photo" else "Retake", fontWeight = FontWeight.SemiBold)
             }
-            OutlinedButton(
+            KarmaOutlinedButton(
                 onClick = { galleryLauncher.launch("image/*") },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp)
@@ -531,7 +531,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
             IconButton(onClick = { if (people > 1) people-- }) {
                 Icon(Icons.Filled.Remove, contentDescription = "Fewer people", tint = TextPrimary)
             }
-            Text(people.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = SecondaryAmber)
+            Text(people.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = AmberText)
             IconButton(onClick = { if (people < 500) people++ }) {
                 Icon(Icons.Filled.Add, contentDescription = "More people", tint = TextPrimary)
             }
@@ -578,7 +578,7 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
         Spacer(modifier = Modifier.height(20.dp))
 
         val canSend = photoUri != null && consent && !isSending
-        Button(
+        KarmaButton(
             onClick = { send() },
             enabled = canSend,
             modifier = Modifier.fillMaxWidth().height(56.dp),

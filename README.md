@@ -5,9 +5,10 @@ AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with K
 ## What works
 - Donor flow: a three-step Donate screen (photo and AI check, details with pickup time and a note, pickup address and coins summary). Gemini checks safety and quality; a submitted donation then shows up on the home screen tracker.
 - Receiver (NGO) side with its own bottom bar: Home (availability, storage level, urgent-need broadcast that shows up on the donor home, attention list, weekly meals), Offers (accept or decline, track the volunteer, log intake with the camera and AI, with a manual fallback), Stock (expiry bars, hand out or dispose) and Smiles (send photos to donors). Because both roles run on one phone, a donation posted from the Donate screen appears as an offer, and when the NGO records it the donor's tracker updates and the coins are added to their balance.
+- Warm light theme by default with a dark mode switch in Profile (the choice is saved). Headlines, screen titles and big numbers use a soft serif (Fraunces); body text stays in Plus Jakarta Sans.
 - Karma coins (shown with a crowned food coin instead of "KP") and tiers.
 - Karma Store: a balance card with tier progress, popular and category browsing, reward detail sheets, a cart with the tier discount applied (5% Silver, 10% Gold, 20% Platinum), demo voucher codes you can copy, a My rewards tab that survives restarts, and give-back rewards that turn coins into meals and trees.
-- Donor home: pickup location, a swipeable banner (donate, redeem points, a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
+- Donor home: pickup location, a swipeable banner (the newest smile photo first, then donate, redeem points and a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
 - Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty; they also show under "Sent by you" on the receiver's Smiles tab.
 
 ## Not built yet
@@ -37,4 +38,8 @@ Moving between tabs slides the new screen in from the side the tab sits on (goin
 
 The home screen borrows layout ideas from food-delivery and donation apps (location header, banner carousel, category row, request cards with progress bars, order-style tracker) while keeping one accent colour and plain copy.
 
-Typeface: [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) (SIL Open Font License, see `licenses/`).
+Motion is used to say something: the coin balance counts up when coins arrive (with a "+600" in the pill), a "Delivered" stamp lands on the tracker when the NGO confirms the food, cards and buttons dip while pressed, and grey placeholders shimmer while Gemini checks a photo. The helpers are in `Motion.kt`.
+
+Colours come from two palettes in `ui/theme/Color.kt` (`LightPalette`, `DarkPalette`). Screens use the names (`TextPrimary`, `SurfaceColor`, `PrimaryGreen`, ...), never raw hex, so both themes stay in step. `PaletteContrastTest` checks that every text and background pair keeps at least 4.5:1 contrast in both palettes. Text that sits on a photo uses fixed white because the photo does not change with the theme.
+
+Typefaces: [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) for body text and [Fraunces](https://github.com/undercasetype/Fraunces) for headlines and numbers (both SIL Open Font License, see `licenses/`).

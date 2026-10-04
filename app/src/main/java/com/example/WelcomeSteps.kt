@@ -31,7 +31,8 @@ import com.example.ui.theme.TextSecondary
 /** One step of "How it works" on the donor welcome screen, with its custom illustration. */
 data class WelcomeStep(val title: String, val body: String, val art: Int, val tint: Color)
 
-val welcomeSteps = listOf(
+@Composable
+fun welcomeSteps(): List<WelcomeStep> = listOf(
     WelcomeStep(
         "Photograph the food",
         "The app estimates servings and checks how fresh it looks, so there is nothing to type.",
