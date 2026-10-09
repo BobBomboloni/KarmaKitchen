@@ -162,6 +162,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object SendSmile : Screen("send_smile/{receivalId}", "Send a smile", Icons.Filled.Mood) {
         fun routeFor(receivalId: String) = "send_smile/$receivalId"
     }
+    object TrackPickup : Screen("track/{side}/{donationId}", "Live pickup", Icons.Filled.Star) {
+        fun routeFor(donationId: String, ngoSide: Boolean) = "track/${if (ngoSide) "ngo" else "donor"}/$donationId"
+    }
 
 }
 
@@ -233,7 +236,8 @@ fun KarmaKitchenApp() {
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
             AnimatedVisibility(
-                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.SendSmile.route,
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.SendSmile.route &&
+                    currentRoute != Screen.TrackPickup.route,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
@@ -318,6 +322,19 @@ fun KarmaKitchenApp() {
                 SendSmileScreen(
                     navController = navController,
                     receivalId = entry.arguments?.getString("receivalId") ?: ""
+                )
+            }
+            composable(
+                route = Screen.TrackPickup.route,
+                arguments = listOf(
+                    navArgument("side") { type = NavType.StringType },
+                    navArgument("donationId") { type = NavType.StringType }
+                )
+            ) { entry ->
+                TrackPickupScreen(
+                    navController = navController,
+                    donationId = entry.arguments?.getString("donationId") ?: "",
+                    ngoSide = entry.arguments?.getString("side") == "ngo"
                 )
             }
         }

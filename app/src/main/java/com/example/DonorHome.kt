@@ -234,6 +234,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 ActiveDonationCard(
                     donation = donation,
                     onDismiss = { DonationLog.acknowledge(donation.id) },
+                    onTrack = { navController.navigate(Screen.TrackPickup.routeFor(donation.id, ngoSide = false)) },
                     modifier = Modifier
                         .padding(horizontal = ScreenPadding)
                         .animateItem()
@@ -782,13 +783,15 @@ private fun rememberFoodWasteFacts(): State<FoodWasteFacts> {
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, onTrack: () -> Unit, modifier: Modifier = Modifier) {
     val steps = listOf("Posted", "Picked up", "Delivered")
     val delivered = donation.status == STATUS_DELIVERED
     // Past the last step, so every dot shows a tick once the food has arrived.
     val stage = if (delivered) steps.size else donation.stage
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceCard(RoundedCornerShape(16.dp), onTrack),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceColor)
     ) {
@@ -808,7 +811,7 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "Delivered"
-                            stage == 0 -> "Waiting for a volunteer"
+                            stage == 0 -> "Finding a carrier"
                             else -> "Donation on its way"
                         },
                         style = MaterialTheme.typography.labelMedium,
@@ -824,7 +827,7 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "${donation.ngo} has it. +${"%,d".format(donation.points)} coins added."
-                            stage == 0 -> "Nearby NGOs can see it now"
+                            stage == 0 -> "Nearby NGOs and Karma Riders can see it"
                             else -> "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}"
                         },
                         style = MaterialTheme.typography.bodySmall,
@@ -851,10 +854,15 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
             }
             Spacer(Modifier.height(16.dp))
             TrackerSteps(labels = steps, stage = stage)
+            Spacer(Modifier.height(4.dp))
             if (delivered) {
-                Spacer(Modifier.height(4.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
                     Text("Got it", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
+                }
+            } else {
+                TextButton(onClick = onTrack, modifier = Modifier.align(Alignment.End)) {
+                    Text("Track live", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(18.dp))
                 }
             }
         }
