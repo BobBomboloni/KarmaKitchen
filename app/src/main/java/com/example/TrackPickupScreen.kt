@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -430,7 +431,7 @@ private fun LegendDot(color: Color, label: String, modifier: Modifier = Modifier
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun TrackCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun TrackCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -438,8 +439,9 @@ private fun TrackCard(modifier: Modifier = Modifier, content: @Composable () -> 
             .background(SurfaceColor)
             .border(1.dp, OutlineColor, RoundedCornerShape(16.dp))
             .padding(16.dp)
-            .animateContentSize()
-    ) { content() }
+            .animateContentSize(),
+        content = content
+    )
 }
 
 private enum class RungState { Waiting, Active, Skipped }
