@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Bowl Base & Outer Shell -->
+    <path
+        android:pathData="M 45,115 C 45,155 80,168 100,168 C 120,168 155,155 155,115 C 140,118 60,118 45,115 Z"
+        android:fillColor="#4CAF50" />
+
+    <!-- Bowl Inner Glow / Food -->
+    <path
+        android:pathData="M 52,118 C 58,148 85,158 100,158 C 115,158 142,148 148,118 C 130,123 70,123 52,118 Z"
+        android:fillColor="#FBBF24" />
+
+    <!-- Bowl Foot / Stand -->
+    <path
+        android:pathData="M 75,165 C 75,172 82,174 100,174 C 118,174 125,172 125,165 Z"
+        android:fillColor="#388E3C" />
+
+    <!-- Left Grains (Golden Wheat) -->
+    <path
+        android:pathData="M 55,108 C 50,102 54,94 62,98 C 66,102 62,110 55,108 Z"
+        android:fillColor="#F59E0B" />
+    <path
+        android:pathData="M 68,112 C 64,106 70,98 76,103 C 79,108 74,115 68,112 Z"
+        android:fillColor="#F59E0B" />
+    <path
+        android:pathData="M 58,118 C 55,114 60,108 66,112 C 68,116 64,121 58,118 Z"
+        android:fillColor="#F59E0B" />
+
+    <!-- Center Leaves (Lush Green Sprout) -->
+    <path
+        android:pathData="M 80,120 C 76,104 88,92 98,118 C 88,124 82,122 80,120 Z"
+        android:fillColor="#4CAF50" />
+    <path
+        android:pathData="M 120,120 C 124,104 112,92 102,118 C 112,124 118,122 120,120 Z"
+        android:fillColor="#66BB6A" />
+
+    <!-- Right Leaves -->
+    <path
+        android:pathData="M 134,108 C 130,102 138,95 144,100 C 147,105 140,113 134,108 Z"
+        android:fillColor="#4CAF50" />
+    <path
+        android:pathData="M 145,116 C 141,111 148,105 152,109 C 155,113 150,119 145,116 Z"
+        android:fillColor="#66BB6A" />
+
+    <!-- Center Floating Heart -->
+    <path
+        android:pathData="M 100,108 C 96,100 88,100 88,106 C 88,112 100,120 100,120 C 100,120 112,112 112,106 C 112,100 104,100 100,108 Z"
+        android:fillColor="#F97316" />
+
+    <!-- Infinity Left Ribbon (Warm Orange/Gold) -->
+    <path
+        android:pathData="M 100,68 C 82,88 45,88 45,60 C 45,36 80,36 100,68 Z"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="14"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Infinity Right Ribbon (Fresh Green) -->
+    <path
+        android:pathData="M 100,68 C 118,88 155,88 155,60 C 155,36 120,36 100,68 Z"
+        android:strokeColor="#4CAF50"
+        android:strokeWidth="14"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Top Crown Heart Ribbon Connection -->
+    <path
+        android:pathData="M 100,48 C 92,30 76,32 76,44 C 76,56 100,72 100,72 C 100,72 124,56 124,44 C 124,32 108,30 100,48 Z"
+        android:fillColor="#F59E0B" />
+</vector>

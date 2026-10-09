@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "KarmaKitchen"
 
-include(":app")
+include(":app", ":prototype", ":safepoint")

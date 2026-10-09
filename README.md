@@ -2,10 +2,21 @@
 
 AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with Kotlin and Jetpack Compose.
 
+## Three copies of the app
+The project holds three copies of the app. Each has its own app ID and launcher name, so all three can be installed on one phone side by side. Pick which one to run from the run configuration dropdown in Android Studio.
+
+| Folder | Launcher name | App ID | What it is for |
+|---|---|---|---|
+| `app/` | KarmaKitchen | `com.karmakitchen.app` | The real app. Logins, a backend and other working features go here. |
+| `prototype/` | KK Prototype | `com.karmakitchen.prototype` | The good-looking demo for pitches. Visual changes only. |
+| `safepoint/` | KK Safe | `com.aistudio.karmakitchen.hxfm` | A frozen copy of the app as it was on 9 Oct 2026. Do not edit it. |
+
+The safe point keeps the original app ID, so a copy already installed from before the split carries on as the safe point with its saved data. The three copies do not share code: a change made in one folder does not reach the others. The notes below describe the app as it was when the copies were made.
+
 ## What works
 - Donor flow: a three-step Donate screen (photo and AI check, details with pickup time and a note, pickup address and coins summary). Gemini checks safety and quality; a submitted donation then shows up on the home screen tracker.
 - Receiver (NGO) side with its own bottom bar: Home (availability, storage level, urgent-need broadcast that shows up on the donor home, attention list, weekly meals), Offers (accept or decline, track the volunteer, log intake with the camera and AI, with a manual fallback), Stock (expiry bars, hand out or dispose) and Smiles (send photos to donors). Because both roles run on one phone, a donation posted from the Donate screen appears as an offer, and when the NGO records it the donor's tracker updates and the coins are added to their balance.
-- Warm light theme by default with a dark mode switch in Profile (the choice is saved); every screen, including the role selector, follows it. The role selector's logo is drawn in Compose (`AnimatedLogo.kt`), so it works on both backgrounds; the old black-background video (`res/raw/logo_animation.mp4`) is no longer used and can be deleted to make the app about 20 MB smaller. Headlines, screen titles and big numbers use a soft serif (Fraunces); body text stays in Plus Jakarta Sans.
+- Warm light theme by default with a dark mode switch in Profile (the choice is saved); every screen, including the role selector, follows it. The role selector's logo is drawn in Compose (`AnimatedLogo.kt`), so it works on both backgrounds. Headlines, screen titles and big numbers use a soft serif (Fraunces); body text stays in Plus Jakarta Sans.
 - Karma coins (shown with a crowned food coin instead of "KP") and tiers.
 - Karma Store: a balance card with tier progress, popular and category browsing, reward detail sheets, a cart with the tier discount applied (5% Silver, 10% Gold, 20% Platinum), demo voucher codes you can copy, a My rewards tab that survives restarts, and give-back rewards that turn coins into meals and trees.
 - Donor home: pickup location, a swipeable banner (the newest smile photo first, then donate, redeem points and a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
