@@ -21,7 +21,8 @@ class GreetingScreenshotTest {
 
   @Test
   fun greeting_screenshot() {
-    composeTestRule.setContent { MyApplicationTheme { Greeting("Robolectric") } }
+    // The template's Greeting composable no longer exists, so this captures the app's logo text.
+    composeTestRule.setContent { MyApplicationTheme { KarmaKitchenLogoText() } }
 
     composeTestRule.onRoot().captureRoboImage(filePath = "src/test/screenshots/greeting.png")
   }
