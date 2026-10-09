@@ -83,6 +83,12 @@ import android.graphics.Bitmap
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import com.example.api.FoodAnalysisResult
+import com.example.cloud.Account
+import com.example.cloud.AccountStatus
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
+import com.example.cloud.ROLE_NGO
+import com.example.cloud.earnedCoins
 
 import com.example.api.IntakeAnalysisResult
 import com.example.api.verifyIntakeWithGemini
@@ -120,6 +126,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeSettings.load(applicationContext)
+        Cloud.init(applicationContext)
         val barStyle = if (ThemeSettings.dark) {
             SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         } else {
@@ -173,19 +180,72 @@ private tailrec fun android.content.Context.findActivity(): android.app.Activity
 
 @Composable
 fun KarmaKitchenApp() {
+    if (!Cloud.enabled) {
+        AppContent(startDestination = Screen.RoleSelection.route)
+        return
+    }
+    // Connected to Firebase: sign in and pick a role first, then open that role's home.
+    val status = Account.status
+    if (status is AccountStatus.Ready) {
+        key(status.uid) {
+            AppContent(
+                startDestination = when {
+                    status.role == ROLE_NGO -> Screen.NgoDashboard.route
+                    status.isNew -> Screen.Welcome.route
+                    else -> Screen.Dashboard.route
+                }
+            )
+        }
+    } else {
+        AccountGate(status)
+    }
+}
+
+@Composable
+private fun AppContent(startDestination: String) {
     val navController = rememberNavController()
     val appContext = LocalContext.current
-    var userProfile by remember { mutableStateOf(loadProfile(appContext)) }
-    LaunchedEffect(userProfile) { saveProfile(appContext, userProfile) }
+    val scope = rememberCoroutineScope()
+    var localProfile by remember { mutableStateOf(loadProfile(appContext)) }
+    LaunchedEffect(localProfile) { if (!Cloud.enabled) saveProfile(appContext, localProfile) }
     remember(appContext) { SmileStore.load(appContext) }
 
-    // Coins the NGO has confirmed (when it records a delivery) are added to the donor's balance.
+    // With an account, the profile comes from Firestore and the balance is coins earned from
+    // received donations minus coins spent in the store.
+    val userProfile by remember {
+        derivedStateOf {
+            val cloudUser = Account.user
+            if (Cloud.enabled && cloudUser != null) {
+                UserProfile(
+                    name = cloudUser.name,
+                    email = cloudUser.email,
+                    phone = cloudUser.phone,
+                    address = cloudUser.address,
+                    karmaPoints = (earnedCoins(CloudSync.donorDonations) - cloudUser.coinsSpent).coerceAtLeast(0)
+                )
+            } else {
+                localProfile
+            }
+        }
+    }
+    val updateProfile: (UserProfile) -> Unit = remember {
+        { updated: UserProfile ->
+            if (Cloud.enabled) {
+                Account.saveProfile(updated, spent = userProfile.karmaPoints - updated.karmaPoints)
+            } else {
+                localProfile = updated
+            }
+        }
+    }
+
+    // Single-phone mode: coins the NGO has confirmed (when it records a delivery) are added to the
+    // donor's balance.
     val pendingCredits = DonationLog.pendingCredits
     LaunchedEffect(pendingCredits.size) {
         if (pendingCredits.isNotEmpty()) {
             val earned = pendingCredits.sum()
             pendingCredits.clear()
-            userProfile = userProfile.copy(karmaPoints = userProfile.karmaPoints + earned)
+            localProfile = localProfile.copy(karmaPoints = localProfile.karmaPoints + earned)
         }
     }
 
@@ -268,7 +328,7 @@ fun KarmaKitchenApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.RoleSelection.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
             // The slide direction follows the tab order (see NavTransitions.kt), so going back to an
             // earlier tab slides the other way.
@@ -288,21 +348,24 @@ fun KarmaKitchenApp() {
                 DonationCreationScreen(
                     navController = navController, 
                     userProfile = userProfile,
-                    onProfileUpdate = { userProfile = it }
+                    onProfileUpdate = updateProfile
                 ) 
             }
             composable(Screen.Store.route) { 
                 KarmaStoreScreen(
                     navController = navController,
                     userProfile = userProfile,
-                    onProfileUpdate = { userProfile = it }
+                    onProfileUpdate = updateProfile
                 ) 
             }
             composable(Screen.Profile.route) { 
                 ProfileEditScreen(
                     profile = userProfile,
-                    onProfileUpdate = { userProfile = it },
-                    onBack = { navController.popBackStack() }
+                    onProfileUpdate = updateProfile,
+                    onBack = { navController.popBackStack() },
+                    onSignOut = if (Cloud.enabled) {
+                        { scope.launch { Account.signOut(appContext) } }
+                    } else null
                 )
             }
             composable(Screen.Tiers.route) {
@@ -483,7 +546,8 @@ fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
 fun ProfileEditScreen(
     profile: UserProfile,
     onProfileUpdate: (UserProfile) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSignOut: (() -> Unit)? = null
 ) {
     var name by remember { mutableStateOf(profile.name) }
     var email by remember { mutableStateOf(profile.email) }
@@ -601,6 +665,12 @@ fun ProfileEditScreen(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = OnPrimaryGreen)
         ) {
             Text("Save changes", fontWeight = FontWeight.SemiBold)
+        }
+        if (onSignOut != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign out", color = TextSecondary)
+            }
         }
     }
 }

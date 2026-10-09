@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.cloud.Cloud
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -188,12 +189,14 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
         ngosAccepting(selectedCategory, listOfNotNull(broadcast) + sampleNgoRequests)
     }
     val smiles = SmileStore.smiles.toList()
-    // Donations made in this session (from the Donate screen) come first.
-    val donations = DonationLog.submitted.toList() + recentDonations
+    // Donations made in this session (from the Donate screen) come first. With an account, only the
+    // donor's real donations show; the sample history is for the single-phone demo.
+    val sampleHistory = if (Cloud.enabled) emptyList() else recentDonations
+    val donations = DonationLog.submitted.toList() + sampleHistory
     // A donation made here comes first; once it is delivered its card stays until the donor taps "Got it".
     val activeDonation = DonationLog.submitted.firstOrNull { it.inTransit }
         ?: DonationLog.submitted.firstOrNull { it.status == STATUS_DELIVERED && !it.acknowledged }
-        ?: recentDonations.firstOrNull { it.inTransit }
+        ?: sampleHistory.firstOrNull { it.inTransit }
 
     val openDonate = { navController.goToTab(Screen.Donate.route) }
     val openStore = { navController.goToTab(Screen.Store.route) }

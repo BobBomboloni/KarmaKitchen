@@ -7,54 +7,125 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import com.example.BuildConfig
+import com.example.cloud.Cloud
+import com.google.firebase.Firebase
+import com.google.firebase.ai.GenerativeModel
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.Content
+import com.google.firebase.ai.type.GenerativeBackend
+import com.google.firebase.ai.type.Tool
+import com.google.firebase.ai.type.content
 import com.squareup.moshi.JsonClass
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import org.json.JSONObject
-import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.POST
-import retrofit2.http.Query
 import java.io.ByteArrayOutputStream
-import java.util.concurrent.TimeUnit
 
-@JsonClass(generateAdapter = true)
-data class GenerateContentRequest(
-    val contents: List<Content>,
-    val systemInstruction: Content? = null,
-    val tools: List<Map<String, Map<String, String>>>? = null
+/**
+ * Gemini is called through Firebase AI Logic (Gemini Developer API), so no API key ships inside
+ * the APK; App Check vouches for the app instead. A busy Gemini (503 "overloaded") is retried for
+ * about 15 seconds, first on [PRIMARY_MODEL] and then on [FALLBACK_MODEL]. Any other error goes
+ * straight to the fallback model.
+ */
+private const val PRIMARY_MODEL = "gemini-3.5-flash"
+private const val FALLBACK_MODEL = "gemini-flash-lite-latest"
+private val RETRY_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L)
+
+/** Shown when Gemini stays overloaded after every retry. */
+const val AI_BUSY_MESSAGE = "Our AI is busy right now. Tap Try again in a moment."
+const val AI_NOT_SET_UP_MESSAGE =
+    "The AI check needs the app to be connected to Firebase. See Setup in the README."
+const val AI_FAILED_MESSAGE = "The AI couldn't answer this time. Check your internet and try again."
+
+/**
+ * A Gemini failure with a message that can be shown to the person as it is. Debug builds add the
+ * underlying error, so a tester can see what went wrong without opening Logcat.
+ */
+class AiException(message: String, cause: Throwable? = null) : Exception(
+    if (BuildConfig.DEBUG && cause != null) "$message\n\nDebug details: ${errorSummary(cause)}" else message,
+    cause
 )
 
-@JsonClass(generateAdapter = true)
-data class Content(
-    val parts: List<Part>,
-    val role: String? = null
+internal fun errorSummary(e: Throwable): String = "${e::class.simpleName}: ${e.message}".take(300)
+
+/** True when Gemini is overloaded for a moment (HTTP 503), so retrying the same model can help. */
+internal fun isBusyError(e: Throwable): Boolean {
+    val text = e.message ?: ""
+    return listOf("503", "overloaded", "unavailable", "try again later").any { text.contains(it, ignoreCase = true) }
+}
+
+/** True when this model's request limit is used up (HTTP 429), so the fallback model is worth a try. */
+internal fun isQuotaError(e: Throwable): Boolean {
+    val text = e.message ?: ""
+    return e::class.simpleName == "QuotaExceededException" ||
+        listOf("429", "RESOURCE_EXHAUSTED").any { text.contains(it, ignoreCase = true) }
+}
+
+private fun model(
+    name: String,
+    systemInstruction: String? = null,
+    tools: List<Tool>? = null
+): GenerativeModel = Firebase.ai(backend = GenerativeBackend.googleAI()).generativeModel(
+    modelName = name,
+    systemInstruction = systemInstruction?.let { content { text(it) } },
+    tools = tools
 )
 
-@JsonClass(generateAdapter = true)
-data class Part(
-    val text: String? = null,
-    val inlineData: InlineData? = null
-)
+/**
+ * Sends [prompt] to Gemini and returns the reply text. Retries busy errors on the main model,
+ * then on the fallback model, and throws [AiException] with a friendly message when all fail.
+ */
+private suspend fun generateText(
+    prompt: List<Content>,
+    systemInstruction: String? = null,
+    tools: List<Tool>? = null
+): String {
+    if (!Cloud.enabled) throw AiException(AI_NOT_SET_UP_MESSAGE)
+    var lastError: Exception? = null
+    for (name in listOf(PRIMARY_MODEL, FALLBACK_MODEL)) {
+        val generativeModel = model(name, systemInstruction, tools)
+        for (attempt in 0..RETRY_DELAYS_MS.size) {
+            try {
+                // Passed as first + rest so it fits both the (vararg) and (first, vararg rest) signatures.
+                val response = generativeModel.generateContent(prompt.first(), *prompt.drop(1).toTypedArray())
+                val text: String? = response.text
+                if (!text.isNullOrBlank()) return text
+                throw AiException(AI_FAILED_MESSAGE)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: AiException) {
+                throw e
+            } catch (e: Exception) {
+                lastError = e
+                if (!isBusyError(e)) {
+                    // Other errors won't fix themselves on a retry, but the fallback model may still
+                    // work (for example when this one is out of free requests or was retired).
+                    Log.e("GeminiService", "Gemini call failed on $name", e)
+                    break
+                }
+                Log.w("GeminiService", "Gemini $name busy (attempt ${attempt + 1})", e)
+                RETRY_DELAYS_MS.getOrNull(attempt)?.let { delay(it) }
+            }
+        }
+    }
+    val busy = lastError != null && (isBusyError(lastError) || isQuotaError(lastError))
+    throw AiException(if (busy) AI_BUSY_MESSAGE else AI_FAILED_MESSAGE, lastError)
+}
 
-@JsonClass(generateAdapter = true)
-data class InlineData(
-    val mimeType: String,
-    val data: String
-)
+/** Strips a ```json fence if the model added one anyway. */
+private fun stripJsonFence(responseText: String): String = responseText.trim()
+    .replace(Regex("^```json\\s*", RegexOption.IGNORE_CASE), "")
+    .replace(Regex("^```\\s*"), "")
+    .replace(Regex("```$"), "")
+    .trim()
 
-@JsonClass(generateAdapter = true)
-data class GenerateContentResponse(
-    val candidates: List<Candidate>? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class Candidate(
-    val content: Content? = null
+private fun imagePrompt(prompt: String, base64Image: String): List<Content> = listOf(
+    content {
+        text(prompt)
+        inlineData(Base64.decode(base64Image, Base64.NO_WRAP), "image/jpeg")
+    }
 )
 
 data class FoodAnalysisResult(
@@ -70,91 +141,21 @@ data class FoodAnalysisResult(
     val rawResponse: String = ""
 )
 
-interface GeminiApiService {
-    @POST("v1beta/models/gemini-3.5-flash:generateContent")
-    suspend fun generateContent(
-        @Query("key") apiKey: String,
-        @Body request: GenerateContentRequest
-    ): GenerateContentResponse
-}
-
-
 data class ChatMessage(val isUser: Boolean, val text: String)
 
 suspend fun chatWithGemini(history: List<ChatMessage>, newMessage: String): String = withContext(Dispatchers.IO) {
-    val apiKey = BuildConfig.GEMINI_API_KEY
-    if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
-        return@withContext "Please configure your Gemini API Key in the settings."
-    }
-    
     val systemInstruction = "You are a helpful AI assistant for KarmaKitchen. Your MAIN priority is answering queries related to food donation. You also help with food storage and food safety. If a user asks about topics unrelated to food donation, storage, or safety, politely decline and steer the conversation back. Be concise, friendly, and practical. Do not use Markdown, just plain text if possible, or very simple formatting."
-    
-    val contents = history.map { Content(role = if (it.isUser) "user" else "model", parts = listOf(Part(text = it.text))) } +
-        Content(role = "user", parts = listOf(Part(text = newMessage)))
 
-    val request = GenerateContentRequest(
-        contents = contents,
-        systemInstruction = Content(parts = listOf(Part(text = systemInstruction)))
-    )
+    val contents = history.map { content(role = if (it.isUser) "user" else "model") { text(it.text) } } +
+        content(role = "user") { text(newMessage) }
 
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
-        val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?: "Sorry, I couldn't generate a response."
-        return@withContext responseText.trim()
-    } catch (e: Exception) {
-        Log.e("GeminiService", "Chat API failed", e)
-        return@withContext "Sorry, I encountered an error. Please try again."
+        generateText(contents, systemInstruction = systemInstruction).trim()
+    } catch (e: AiException) {
+        e.message ?: "Sorry, I encountered an error. Please try again."
     }
 }
 
-
-suspend fun <T> retryWithBackoff(
-    times: Int = 3,
-    initialDelay: Long = 1000,
-    maxDelay: Long = 5000,
-    factor: Double = 2.0,
-    block: suspend () -> T
-): T {
-    var currentDelay = initialDelay
-    repeat(times - 1) {
-        try {
-            return block()
-        } catch (e: Exception) {
-            val isRetryable = e is retrofit2.HttpException && (e.code() == 503 || e.code() == 429)
-            if (!isRetryable) {
-                throw e
-            }
-            Log.w("GeminiService", "Retryable error ${e.code()} from Gemini, retrying in ${currentDelay}ms...", e)
-            kotlinx.coroutines.delay(currentDelay)
-            currentDelay = (currentDelay * factor).toLong().coerceAtMost(maxDelay)
-        }
-    }
-    return block()
-}
-
-object RetrofitClient {
-    private const val BASE_URL = "https://generativelanguage.googleapis.com/"
-
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .build()
-
-    private val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-
-    val service: GeminiApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-            .create(GeminiApiService::class.java)
-    }
-}
 
 suspend fun uriToBase64(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
     val maxDimension = 1024
@@ -188,11 +189,8 @@ suspend fun uriToBase64(context: Context, uri: Uri): String = withContext(Dispat
     Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
 }
 
+/** Throws [AiException] with a message that can be shown on screen as it is. */
 suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = withContext(Dispatchers.IO) {
-    val apiKey = BuildConfig.GEMINI_API_KEY
-    if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
-        throw IllegalStateException("Gemini API Key is not configured. Please add GEMINI_API_KEY in the Secrets panel.")
-    }
 
     val prompt = """
         You are KarmaKitchen's AI Food Safety & Quality Inspector.
@@ -221,28 +219,9 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
         }
     """.trimIndent()
 
-    val request = GenerateContentRequest(
-        contents = listOf(
-            Content(
-                parts = listOf(
-                    Part(text = prompt),
-                    Part(inlineData = InlineData(mimeType = "image/jpeg", data = base64Image))
-                )
-            )
-        )
-    )
-
+    val responseText = generateText(imagePrompt(prompt, base64Image))
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
-        val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?: throw Exception("No response returned from Gemini API.")
-
-        // Strip any markdown code formatting if present
-        val cleanJson = responseText
-            .replace(Regex("^```json\\s*", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("^```\\s*"), "")
-            .replace(Regex("```$"), "")
-            .trim()
+        val cleanJson = stripJsonFence(responseText)
 
         val jsonObject = JSONObject(cleanJson)
         val title = jsonObject.optString("title", "Food Item")
@@ -276,8 +255,8 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
             rawResponse = responseText
         )
     } catch (e: Exception) {
-        Log.e("GeminiService", "Failed to analyze food image with Gemini", e)
-        throw e
+        Log.e("GeminiService", "Could not read Gemini's food analysis: $responseText", e)
+        throw AiException(AI_FAILED_MESSAGE, e)
     }
 }
 
@@ -293,10 +272,7 @@ data class FoodWasteFacts(
 )
 
 suspend fun fetchFoodWasteFacts(): FoodWasteFacts? = withContext(Dispatchers.IO) {
-    val apiKey = BuildConfig.GEMINI_API_KEY
-    if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
-        return@withContext null
-    }
+    if (!Cloud.enabled) return@withContext null
     
     val prompt = """
         Using Google Search, find the latest statistics on how much food is wasted annually in:
@@ -318,22 +294,10 @@ suspend fun fetchFoodWasteFacts(): FoodWasteFacts? = withContext(Dispatchers.IO)
         }
     """.trimIndent()
     
-    val request = GenerateContentRequest(
-        contents = listOf(Content(parts = listOf(Part(text = prompt)))),
-        tools = listOf(mapOf("googleSearch" to emptyMap()))
-    )
-    
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
-        val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?: throw Exception("No response")
-            
-        val cleanJson = responseText
-            .replace(Regex("^```json\\s*", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("^```\\s*"), "")
-            .replace(Regex("```$"), "")
-            .trim()
-            
+        val responseText = generateText(listOf(content { text(prompt) }), tools = listOf(Tool.googleSearch()))
+        val cleanJson = stripJsonFence(responseText)
+
         val jsonObject = org.json.JSONObject(cleanJson)
         FoodWasteFacts(
             worldWaste = jsonObject.optString("worldWaste", "1.05 Billion Tonnes"),
@@ -343,8 +307,10 @@ suspend fun fetchFoodWasteFacts(): FoodWasteFacts? = withContext(Dispatchers.IO)
             gujaratWasteKgPerSec = jsonObject.optDouble("gujaratWasteKgPerSec", 112.5),
             positiveMessage = jsonObject.optString("positiveMessage", "Your donation makes a real difference!")
         )
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
-        Log.w("GeminiService", "Failed to fetch food waste facts, falling back.")
+        Log.w("GeminiService", "Failed to fetch food waste facts, falling back.", e)
         null
     }
 }
@@ -375,10 +341,6 @@ fun bitmapToBase64(originalBitmap: Bitmap): String {
 }
 
 suspend fun verifyIntakeWithGemini(base64Image: String): IntakeAnalysisResult = withContext(Dispatchers.IO) {
-    val apiKey = BuildConfig.GEMINI_API_KEY
-    if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
-        throw IllegalStateException("Gemini API Key is not configured.")
-    }
 
     val prompt = """
         You are KarmaKitchen's NGO Intake AI.
@@ -401,28 +363,10 @@ suspend fun verifyIntakeWithGemini(base64Image: String): IntakeAnalysisResult = 
         }
     """.trimIndent()
 
-    val request = GenerateContentRequest(
-        contents = listOf(
-            Content(
-                parts = listOf(
-                    Part(text = prompt),
-                    Part(inlineData = InlineData(mimeType = "image/jpeg", data = base64Image))
-                )
-            )
-        )
-    )
-
+    val responseText = generateText(imagePrompt(prompt, base64Image))
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
-        val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            ?: throw Exception("No response returned from Gemini API.")
-            
-        val cleanJson = responseText
-            .replace(Regex("^```json\\s*", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("^```\\s*"), "")
-            .replace(Regex("```$"), "")
-            .trim()
-            
+        val cleanJson = stripJsonFence(responseText)
+
         val jsonObject = org.json.JSONObject(cleanJson)
         
         val tagsArray = jsonObject.optJSONArray("dietaryTags")
@@ -443,8 +387,8 @@ suspend fun verifyIntakeWithGemini(base64Image: String): IntakeAnalysisResult = 
             rawResponse = responseText
         )
     } catch (e: Exception) {
-        Log.e("GeminiService", "Failed to verify intake", e)
-        throw e
+        Log.e("GeminiService", "Could not read Gemini's intake check: $responseText", e)
+        throw AiException(AI_FAILED_MESSAGE, e)
     }
 }
 
