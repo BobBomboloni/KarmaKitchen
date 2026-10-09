@@ -28,7 +28,7 @@ Everything below is free and needs no card. Stay on Firebase's Spark plan.
 4. Download `google-services.json` (Project settings > Your apps) **after** turning on Google sign-in and adding the SHA-1, and put it in `app/`. Google sign-in only works if the file has an `oauth_client` entry. The file is git-ignored because this repo is public, so share it with teammates directly.
 5. Firestore Database > Create database, location `asia-south1 (Mumbai)`, production mode. Then open Rules, paste in `firestore.rules` and press Publish.
 6. AI Logic > Get started > **Gemini Developer API**.
-7. App Check > Apps > register the Android app with **Play Integrity**. Leave enforcement off while testing. Debug builds print a debug token to Logcat (search for "debug secret"); add it under App Check > Manage debug tokens before turning enforcement on.
+7. App Check > Apps > register the Android app with **Play Integrity** (it asks for the SHA-256 fingerprint). Every phone or emulator that runs a debug build also needs its own debug token, or the AI answers "Firebase App Check token is invalid": run the app, search Logcat for "debug secret", copy the code, and add it under App Check > Apps > ⋮ > Manage debug tokens. Uninstalling the app makes a new code.
 8. Open in Android Studio and run on a device or emulator (minSdk 24).
 
 To test a donation end to end you need two accounts, ideally on two phones: sign up as a donor on one and as an NGO on the other. New NGOs cannot see or accept offers until they are verified: in Firestore, open `ngos/<the NGO's user id>` and set `verified` to `true`.

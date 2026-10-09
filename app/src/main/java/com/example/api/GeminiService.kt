@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import com.example.BuildConfig
 import com.example.cloud.Cloud
 import com.google.firebase.Firebase
 import com.google.firebase.ai.GenerativeModel
@@ -24,8 +25,9 @@ import java.io.ByteArrayOutputStream
 
 /**
  * Gemini is called through Firebase AI Logic (Gemini Developer API), so no API key ships inside
- * the APK; App Check vouches for the app instead. Busy errors (503 "overloaded", 429) are retried
- * for about 15 seconds, first on [PRIMARY_MODEL] and then on [FALLBACK_MODEL].
+ * the APK; App Check vouches for the app instead. A busy Gemini (503 "overloaded") is retried for
+ * about 15 seconds, first on [PRIMARY_MODEL] and then on [FALLBACK_MODEL]. Any other error goes
+ * straight to the fallback model.
  */
 private const val PRIMARY_MODEL = "gemini-3.5-flash"
 private const val FALLBACK_MODEL = "gemini-flash-lite-latest"
@@ -35,17 +37,30 @@ private val RETRY_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L)
 const val AI_BUSY_MESSAGE = "Our AI is busy right now. Tap Try again in a moment."
 const val AI_NOT_SET_UP_MESSAGE =
     "The AI check needs the app to be connected to Firebase. See Setup in the README."
-const val AI_FAILED_MESSAGE = "We couldn't check the photo. Check your internet and tap Try again."
+const val AI_FAILED_MESSAGE = "The AI couldn't answer this time. Check your internet and try again."
 
-/** A Gemini failure with a message that can be shown to the person as it is. */
-class AiException(message: String, cause: Throwable? = null) : Exception(message, cause)
+/**
+ * A Gemini failure with a message that can be shown to the person as it is. Debug builds add the
+ * underlying error, so a tester can see what went wrong without opening Logcat.
+ */
+class AiException(message: String, cause: Throwable? = null) : Exception(
+    if (BuildConfig.DEBUG && cause != null) "$message\n\nDebug details: ${errorSummary(cause)}" else message,
+    cause
+)
 
-/** True for errors that mean "try again later" rather than "this request is wrong". */
+internal fun errorSummary(e: Throwable): String = "${e::class.simpleName}: ${e.message}".take(300)
+
+/** True when Gemini is overloaded for a moment (HTTP 503), so retrying the same model can help. */
 internal fun isBusyError(e: Throwable): Boolean {
-    val name = e::class.simpleName ?: ""
     val text = e.message ?: ""
-    return name == "ServerException" || name == "QuotaExceededException" ||
-        listOf("503", "429", "overloaded", "UNAVAILABLE", "RESOURCE_EXHAUSTED").any { text.contains(it, ignoreCase = true) }
+    return listOf("503", "overloaded", "unavailable", "try again later").any { text.contains(it, ignoreCase = true) }
+}
+
+/** True when this model's request limit is used up (HTTP 429), so the fallback model is worth a try. */
+internal fun isQuotaError(e: Throwable): Boolean {
+    val text = e.message ?: ""
+    return e::class.simpleName == "QuotaExceededException" ||
+        listOf("429", "RESOURCE_EXHAUSTED").any { text.contains(it, ignoreCase = true) }
 }
 
 private fun model(
@@ -68,7 +83,7 @@ private suspend fun generateText(
     tools: List<Tool>? = null
 ): String {
     if (!Cloud.enabled) throw AiException(AI_NOT_SET_UP_MESSAGE)
-    var lastBusy: Exception? = null
+    var lastError: Exception? = null
     for (name in listOf(PRIMARY_MODEL, FALLBACK_MODEL)) {
         val generativeModel = model(name, systemInstruction, tools)
         for (attempt in 0..RETRY_DELAYS_MS.size) {
@@ -83,17 +98,20 @@ private suspend fun generateText(
             } catch (e: AiException) {
                 throw e
             } catch (e: Exception) {
+                lastError = e
                 if (!isBusyError(e)) {
+                    // Other errors won't fix themselves on a retry, but the fallback model may still
+                    // work (for example when this one is out of free requests or was retired).
                     Log.e("GeminiService", "Gemini call failed on $name", e)
-                    throw AiException(AI_FAILED_MESSAGE, e)
+                    break
                 }
-                lastBusy = e
                 Log.w("GeminiService", "Gemini $name busy (attempt ${attempt + 1})", e)
                 RETRY_DELAYS_MS.getOrNull(attempt)?.let { delay(it) }
             }
         }
     }
-    throw AiException(AI_BUSY_MESSAGE, lastBusy)
+    val busy = lastError != null && (isBusyError(lastError) || isQuotaError(lastError))
+    throw AiException(if (busy) AI_BUSY_MESSAGE else AI_FAILED_MESSAGE, lastError)
 }
 
 /** Strips a ```json fence if the model added one anyway. */
