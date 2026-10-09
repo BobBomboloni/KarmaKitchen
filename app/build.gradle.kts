@@ -21,6 +21,9 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    // The Secrets plugin fills this in for the app itself (from .env or .env.example) but not for
+    // the unit-test manifest, which then fails to merge. This empty fallback is only seen there.
+    manifestPlaceholders["MAPS_API_KEY"] = ""
   }
 
   signingConfigs {
