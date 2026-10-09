@@ -25,7 +25,7 @@ Everything below is free and needs no card. Stay on Firebase's Spark plan.
 1. Copy `.env.example` to `.env` and set `MAPS_API_KEY`. (`GEMINI_API_KEY` is no longer used.)
 2. Create a project at [console.firebase.google.com](https://console.firebase.google.com) and add an Android app with the package name `com.aistudio.karmakitchen.hxfm`. Add the SHA-1 of every computer that builds the app (Android Studio: Gradle panel > Tasks > android > signingReport, the `debug` variant).
 3. Authentication > Sign-in method: turn on **Google** and **Email/Password**.
-4. Download `google-services.json` (Project settings > Your apps) **after** turning on Google sign-in, and put it in `app/`. It is not a secret and is committed with the app.
+4. Download `google-services.json` (Project settings > Your apps) **after** turning on Google sign-in and adding the SHA-1, and put it in `app/`. Google sign-in only works if the file has an `oauth_client` entry. The file is git-ignored because this repo is public, so share it with teammates directly.
 5. Firestore Database > Create database, location `asia-south1 (Mumbai)`, production mode. Then open Rules, paste in `firestore.rules` and press Publish.
 6. AI Logic > Get started > **Gemini Developer API**.
 7. App Check > Apps > register the Android app with **Play Integrity**. Leave enforcement off while testing. Debug builds print a debug token to Logcat (search for "debug secret"); add it under App Check > Manage debug tokens before turning enforcement on.

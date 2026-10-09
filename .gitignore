@@ -20,3 +20,7 @@ debug.keystore
 # Generated illustration output and Python caches
 tools/illustrations/out/
 __pycache__/
+
+# Firebase config for your own project. The repo is public, so keep it out of git and share it
+# with teammates directly.
+app/google-services.json
