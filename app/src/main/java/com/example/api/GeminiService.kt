@@ -73,7 +73,9 @@ private suspend fun generateText(
         val generativeModel = model(name, systemInstruction, tools)
         for (attempt in 0..RETRY_DELAYS_MS.size) {
             try {
-                val text = generativeModel.generateContent(*prompt.toTypedArray()).text
+                // Passed as first + rest so it fits both the (vararg) and (first, vararg rest) signatures.
+                val response = generativeModel.generateContent(prompt.first(), *prompt.drop(1).toTypedArray())
+                val text: String? = response.text
                 if (!text.isNullOrBlank()) return text
                 throw AiException(AI_FAILED_MESSAGE)
             } catch (e: CancellationException) {
