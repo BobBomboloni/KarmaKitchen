@@ -44,6 +44,19 @@ class SmileStoreTest {
     }
 
     @Test
+    fun cloudSmilesReplaceEverythingButTheExamples() {
+        SmileStore.smiles.clear()
+        SmileStore.smiles.add(entry("ex").copy(isExample = true, sentAt = 1_000L))
+        SmileStore.smiles.add(entry("signed-out-user").copy(sentAt = 5_000L))
+
+        SmileStore.replaceCloud(listOf(entry("new").copy(sentAt = 2_000L), entry("newer").copy(sentAt = 3_000L)))
+        assertEquals(listOf("newer", "new", "ex"), SmileStore.smiles.map { it.id })
+
+        SmileStore.replaceCloud(emptyList())
+        assertEquals(listOf("ex"), SmileStore.smiles.map { it.id })
+    }
+
+    @Test
     fun addAndRemoveUpdateTheStore() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         SmileStore.smiles.clear()

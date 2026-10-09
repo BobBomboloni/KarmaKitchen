@@ -38,6 +38,8 @@ data class DonationDoc(
     val pickupWindow: String = "",
     val note: String = "",
     val address: String = "",
+    /** True when the donor's photo of the food is saved with it (see [CloudPhotos]). */
+    val hasPhoto: Boolean = false,
     val status: String = STATE_OFFERED,
     val ngoId: String? = null,
     val ngoName: String? = null,
@@ -62,6 +64,7 @@ data class DonationDoc(
         "pickupWindow" to pickupWindow,
         "note" to note,
         "address" to address,
+        "hasPhoto" to hasPhoto,
         "status" to STATE_OFFERED,
         "ngoId" to null,
         "donorAcknowledged" to false
@@ -112,7 +115,8 @@ data class DonationDoc(
         receivedText = receivedAtMs?.let { friendlyDate(it, nowMs, zone) },
         fromDonor = true,
         address = address,
-        donorPhone = donorPhone
+        donorPhone = donorPhone,
+        hasCloudPhoto = hasPhoto
     )
 
     companion object {
@@ -137,6 +141,7 @@ data class DonationDoc(
                 pickupWindow = data["pickupWindow"] as? String ?: "",
                 note = data["note"] as? String ?: "",
                 address = data["address"] as? String ?: "",
+                hasPhoto = data["hasPhoto"] as? Boolean ?: false,
                 status = data["status"] as? String ?: STATE_OFFERED,
                 ngoId = data["ngoId"] as? String,
                 ngoName = data["ngoName"] as? String,
@@ -149,10 +154,6 @@ data class DonationDoc(
         }
     }
 }
-
-/** Coins a donor has earned: the coins on every donation an NGO has confirmed it received. */
-fun earnedCoins(donations: List<DonationDoc>): Int =
-    donations.filter { it.status == STATE_RECEIVED }.sumOf { it.coins }
 
 /** "Just now", "12 min ago", "Today, 1:30 PM", "Yesterday, 7:45 PM" or "29 Sep". */
 fun friendlyDate(timeMs: Long, nowMs: Long, zone: TimeZone = TimeZone.getDefault()): String {

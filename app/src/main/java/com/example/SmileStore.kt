@@ -9,6 +9,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import com.example.api.calculateInSampleSize
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -50,14 +52,16 @@ data class SmileEntry(
 
 /**
  * True when the receiver's Smiles tab lists this photo under "Sent by you". The built-in example
- * photos count as well, so that list is not empty the first time the receiver opens it.
+ * photos count as well, so that list is not empty the first time the receiver opens it. With an
+ * account, an NGO's list only holds the smiles it sent, so all of them count.
  */
-fun SmileEntry.isSentByThisNgo(): Boolean = isExample || ngoName == NGO_NAME
+fun SmileEntry.isSentByThisNgo(): Boolean = isExample || Cloud.enabled || ngoName == NGO_NAME
 
 /**
- * Prototype storage for smile photos. Photos live in the app's private storage and the list
- * is kept in SharedPreferences, so the NGO side and the donor side of this phone share it.
- * A real release would replace this with a server so smiles reach the donor's own phone.
+ * Smile photos. Without an account, photos live in the app's private storage and the list is kept
+ * in SharedPreferences, so the NGO side and the donor side of this phone share it. With an account,
+ * the list holds the example photos plus the signed-in person's smiles from the cloud: the ones an
+ * NGO sent, or the ones a donor received ([CloudSync] keeps them in step).
  */
 object SmileStore {
     private const val PREFS = "karmakitchen_smiles"
@@ -74,14 +78,19 @@ object SmileStore {
         loaded = true
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs.getString(KEY, null)?.let { raw ->
-            // Skip entries whose photo file is gone (for example after clearing app data).
-            smiles.addAll(smilesFromJson(raw).filter { File(it.photoPath).exists() })
+            // Skip entries whose photo file is gone (for example after clearing app data). With an
+            // account only the examples are kept here; everything else comes from the cloud.
+            smiles.addAll(smilesFromJson(raw).filter { File(it.photoPath).exists() && (it.isExample || !Cloud.enabled) })
         }
         // Add the sample photos once, so the wall is not empty the first time it is opened.
         if (!prefs.getBoolean(KEY_EXAMPLES_SEEDED, false)) {
             seedExamples(context)
             prefs.edit().putBoolean(KEY_EXAMPLES_SEEDED, true).apply()
         }
+        // Smiles from the cloud may have arrived first.
+        val sorted = smiles.sortedByDescending { it.sentAt }
+        smiles.clear()
+        smiles.addAll(sorted)
     }
 
     private class ExampleSpec(
@@ -138,8 +147,17 @@ object SmileStore {
         save(context)
     }
 
+    /** Swaps in the signed-in person's smiles from the cloud, keeping the example photos. */
+    fun replaceCloud(entries: List<SmileEntry>) {
+        val merged = (smiles.filter { it.isExample } + entries).sortedByDescending { it.sentAt }
+        smiles.clear()
+        smiles.addAll(merged)
+    }
+
     fun remove(context: Context, id: String) {
         val entry = smiles.firstOrNull { it.id == id } ?: return
+        // A smile from the cloud is only hidden from this donor's wall; the NGO still has it.
+        if (Cloud.enabled && !entry.isExample) CloudSync.hideSmile(id)
         runCatching { File(entry.photoPath).delete() }
         smiles.remove(entry)
         save(context)
@@ -148,8 +166,9 @@ object SmileStore {
     fun hasSmileFor(donationId: String): Boolean = smiles.any { it.donationId == donationId }
 
     private fun save(context: Context) {
+        val kept = if (Cloud.enabled) smiles.filter { it.isExample } else smiles.toList()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY, smilesToJson(smiles.toList()))
+            .putString(KEY, smilesToJson(kept))
             .apply()
     }
 }
@@ -200,7 +219,15 @@ internal fun smilesFromJson(raw: String): List<SmileEntry> = try {
  * Returns the saved file's path.
  */
 suspend fun saveSmilePhoto(context: Context, source: Uri, id: String): String = withContext(Dispatchers.IO) {
-    val maxSide = 1280
+    val finalBitmap = loadUprightBitmap(context, source, maxSide = 1280)
+    val dir = File(context.filesDir, "smiles").apply { mkdirs() }
+    val out = File(dir, "$id.jpg")
+    FileOutputStream(out).use { finalBitmap.compress(Bitmap.CompressFormat.JPEG, 88, it) }
+    out.absolutePath
+}
+
+/** Reads a photo, turns it upright from its EXIF orientation and shrinks it to at most [maxSide] px. */
+internal fun loadUprightBitmap(context: Context, source: Uri, maxSide: Int): Bitmap {
     val resolver = context.contentResolver
 
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -228,14 +255,9 @@ suspend fun saveSmilePhoto(context: Context, source: Uri, id: String): String = 
     }
 
     val scale = minOf(1f, maxSide.toFloat() / maxOf(upright.width, upright.height))
-    val finalBitmap = if (scale < 1f) {
+    return if (scale < 1f) {
         Bitmap.createScaledBitmap(upright, (upright.width * scale).toInt(), (upright.height * scale).toInt(), true)
     } else {
         upright
     }
-
-    val dir = File(context.filesDir, "smiles").apply { mkdirs() }
-    val out = File(dir, "$id.jpg")
-    FileOutputStream(out).use { finalBitmap.compress(Bitmap.CompressFormat.JPEG, 88, it) }
-    out.absolutePath
 }

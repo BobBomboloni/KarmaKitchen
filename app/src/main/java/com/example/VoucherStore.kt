@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import com.example.cloud.Cloud
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,7 +20,10 @@ data class Voucher(
     val validDays: Int
 )
 
-/** Keeps what the donor bought in SharedPreferences so it is still there after a restart. */
+/**
+ * What the donor bought. Without an account it is kept in SharedPreferences so it is still there
+ * after a restart; with one it comes from the account in the cloud ([CloudSync] keeps it in step).
+ */
 object VoucherStore {
     private const val PREFS = "karmakitchen_vouchers"
     private const val KEY = "vouchers"
@@ -31,9 +35,16 @@ object VoucherStore {
     fun load(context: Context) {
         if (loaded) return
         loaded = true
+        if (Cloud.enabled) return
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)?.let { raw ->
             vouchers.addAll(vouchersFromJson(raw))
         }
+    }
+
+    /** Swaps in the signed-in donor's rewards from the cloud, newest first. */
+    fun replaceAll(fromCloud: List<Voucher>) {
+        vouchers.clear()
+        vouchers.addAll(fromCloud)
     }
 
     fun add(context: Context, bought: List<Voucher>) {

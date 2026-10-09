@@ -366,7 +366,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                         val category = guessCategory(draft.title)
                         val donor = Account.user
                         if (Cloud.enabled && donor != null) {
-                            // Every NGO sees it as a new offer; the donor's home follows it from the cloud.
+                            // Every NGO sees it as a new offer, with the photo; the donor's home follows it from the cloud.
                             CloudSync.postDonation(
                                 DonationDoc(
                                     id = id,
@@ -383,7 +383,8 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     pickupWindow = draft.window.label,
                                     note = draft.note.trim(),
                                     address = draft.address.trim()
-                                )
+                                ),
+                                photo = draft.photo
                             )
                             step = 4
                             return@PickupStep

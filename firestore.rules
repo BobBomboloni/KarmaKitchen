@@ -4,8 +4,8 @@ rules_version = '2';
 // Rules and press Publish (or deploy it with the Firebase CLI).
 //
 // The rules are what keep coins honest: a donor can post a donation, but only the verified NGO
-// that accepted it can mark it received, and a donor's balance is the coins on their received
-// donations minus what they have spent.
+// that accepted it can mark it received, and that same write is the only way coins are added to
+// the donor's balance. Spending in the store can never take the balance below zero.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -17,8 +17,16 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function donationPath(donationId) {
+      return /databases/$(database)/documents/donations/$(donationId);
+    }
+
     function myRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return get(userPath(request.auth.uid)).data.role;
     }
 
     // NGOs are verified by hand: set `verified` to true on ngos/{uid} in the console.
@@ -32,17 +40,55 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
+    // A photo small enough to live inside a Firestore document (Cloud Storage needs a card).
+    function isSmallPhoto(value) {
+      return value is bytes && value.size() > 0 && value.size() <= 512 * 1024;
+    }
+
+    // True when this write is the NGO marking [donationId] received, which credits its coins
+    // to [donorId]. The donation rules below require the matching credit in the same write.
+    function creditsDonation(donorId, donationId) {
+      let before = get(donationPath(donationId)).data;
+      let after = getAfter(donationPath(donationId)).data;
+      return before.donorId == donorId
+        && before.ngoId == request.auth.uid
+        && before.status == 'on_the_way'
+        && after.status == 'received'
+        && request.resource.data.get('coinsEarned', 0) == resource.data.get('coinsEarned', 0) + before.coins;
+    }
+
     match /users/{uid} {
       allow read: if isMe(uid);
       allow create: if isMe(uid)
         && request.resource.data.role in ['donor', 'ngo']
-        && request.resource.data.coinsSpent == 0;
-      // The role never changes, and coins spent can only go up.
+        && request.resource.data.coinsSpent == 0
+        && request.resource.data.get('coinsEarned', 0) == 0
+        && !('lastCreditFor' in request.resource.data);
+      // The owner edits their profile and spends coins. The role and coins earned never change,
+      // coins spent only go up, and spending never goes past coins earned.
       allow update: if isMe(uid)
         && request.resource.data.role == resource.data.role
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coinsEarned', 'lastCreditFor'])
         && request.resource.data.coinsSpent is int
-        && request.resource.data.coinsSpent >= resource.data.coinsSpent;
+        && request.resource.data.coinsSpent >= resource.data.coinsSpent
+        && (request.resource.data.coinsSpent == resource.data.coinsSpent
+          || request.resource.data.coinsSpent <= resource.data.get('coinsEarned', 0));
+      // The NGO that receives a donation adds its coins to the donor's balance.
+      allow update: if signedIn() && !isMe(uid)
+        && changesOnly(['coinsEarned', 'lastCreditFor'])
+        && creditsDonation(uid, request.resource.data.lastCreditFor);
       allow delete: if false;
+
+      // Rewards bought in the Karma Store. Prices live in the app, so the rules check that each
+      // reward is bought in the same write that spends at least its price.
+      match /vouchers/{voucherId} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid)
+          && request.resource.data.paid is int
+          && request.resource.data.paid > 0
+          && getAfter(userPath(uid)).data.coinsSpent >= get(userPath(uid)).data.coinsSpent + request.resource.data.paid;
+        allow update, delete: if false;
+      }
     }
 
     match /ngos/{ngoId} {
@@ -82,16 +128,68 @@ service cloud.firestore {
           && request.resource.data.ngoId == request.auth.uid
           && isVerifiedNgo()
           && changesOnly(['status', 'ngoId', 'ngoName', 'volunteer', 'etaMinutes', 'acceptedAt', 'updatedAt']))
-        // The NGO that accepted it records that the food arrived. This unlocks the donor's coins.
+        // The NGO that accepted it records that the food arrived, and in the same write adds the
+        // donation's coins to the donor's balance.
         || (resource.data.status == 'on_the_way'
           && request.resource.data.status == 'received'
           && resource.data.ngoId == request.auth.uid
-          && changesOnly(['status', 'intake', 'receivedAt', 'updatedAt']))
+          && changesOnly(['status', 'intake', 'receivedAt', 'updatedAt'])
+          && getAfter(userPath(resource.data.donorId)).data.get('lastCreditFor', '') == donationId
+          && getAfter(userPath(resource.data.donorId)).data.get('coinsEarned', 0)
+            == get(userPath(resource.data.donorId)).data.get('coinsEarned', 0) + resource.data.coins)
         // The donor dismisses the "Delivered" card.
         || (resource.data.donorId == request.auth.uid
           && changesOnly(['donorAcknowledged']))
       );
 
+      allow delete: if false;
+
+      // The donor's photo of the food, saved with the donation. Readable by whoever can see
+      // the donation.
+      match /photos/{photoId} {
+        function donation() {
+          return get(donationPath(donationId)).data;
+        }
+
+        allow read: if signedIn() && (
+          donation().donorId == request.auth.uid
+          || donation().ngoId == request.auth.uid
+          || (donation().status == 'offered' && isVerifiedNgo())
+        );
+        allow create: if signedIn()
+          && getAfter(donationPath(donationId)).data.donorId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['jpeg', 'createdAt'])
+          && isSmallPhoto(request.resource.data.jpeg);
+        allow update, delete: if false;
+      }
+    }
+
+    // Photos of people enjoying a donation, sent by the NGO that received it to its donor.
+    match /smiles/{smileId} {
+      function receivedByMe(donationId, donorId) {
+        let donation = get(donationPath(donationId)).data;
+        return donation.ngoId == request.auth.uid
+          && donation.status == 'received'
+          && donation.donorId == donorId;
+      }
+
+      allow read: if signedIn() && (
+        resource.data.donorId == request.auth.uid
+        || resource.data.ngoId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && request.resource.data.ngoId == request.auth.uid
+        // The people in the photo (or a parent or guardian) agreed to it being shared.
+        && request.resource.data.consent == true
+        && request.resource.data.hiddenByDonor == false
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 500
+        && isSmallPhoto(request.resource.data.jpeg)
+        && receivedByMe(request.resource.data.donationId, request.resource.data.donorId);
+      // The donor can take a photo off their wall.
+      allow update: if signedIn()
+        && resource.data.donorId == request.auth.uid
+        && changesOnly(['hiddenByDonor']);
       allow delete: if false;
     }
   }

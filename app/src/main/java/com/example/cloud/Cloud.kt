@@ -22,6 +22,7 @@ object Cloud {
         }
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProviderFactory())
         enabled = true
+        CloudSync.init(context)
         Account.start(context.applicationContext)
     }
 }

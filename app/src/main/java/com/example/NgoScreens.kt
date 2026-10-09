@@ -73,6 +73,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -90,6 +91,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -98,6 +100,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.api.bitmapToBase64
 import com.example.cloud.Account
 import com.example.cloud.Cloud
+import com.example.cloud.CloudPhotos
 import com.example.cloud.CloudSync
 import com.example.cloud.currentNgoName
 import com.example.api.verifyIntakeWithGemini
@@ -950,19 +953,7 @@ fun NgoOffersScreen(navController: NavController) {
 @Composable
 private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
     NgoCard(modifier) {
-        val photo = donation.photo
-        if (photo != null) {
-            AsyncImage(
-                model = Uri.parse(photo),
-                contentDescription = "Photo from the donor",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
-            Spacer(Modifier.height(12.dp))
-        }
+        DonationPhoto(donation, height = 150.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             CategoryTile(donation.category)
             Spacer(Modifier.width(12.dp))
@@ -1029,6 +1020,7 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
         else -> 2
     }
     NgoCard(modifier) {
+        DonationPhoto(donation, height = 120.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             CategoryTile(donation.category)
             Spacer(Modifier.width(12.dp))
@@ -1442,6 +1434,25 @@ fun NgoSmilesScreen(navController: NavController) {
 internal fun donationPlace(donation: NgoDonation): String = when {
     donation.distanceKm >= 0 -> "${"%.1f".format(donation.distanceKm)} km · ${donation.donor}"
     else -> donation.donor
+}
+
+/** The donor's photo of the food, when there is one: a file on this phone or the copy in the cloud. */
+@Composable
+private fun DonationPhoto(donation: NgoDonation, height: Dp) {
+    val cloudPhoto by produceState(CloudPhotos.cached(donation.id), donation.id, donation.hasCloudPhoto) {
+        value = if (donation.photo == null && donation.hasCloudPhoto) CloudPhotos.foodPhoto(donation.id) else null
+    }
+    val photo: Any = donation.photo?.let { Uri.parse(it) } ?: cloudPhoto ?: return
+    AsyncImage(
+        model = photo,
+        contentDescription = "Photo from the donor",
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(12.dp))
+    )
+    Spacer(Modifier.height(12.dp))
 }
 
 /** Where to collect a donation from the cloud, and a tap-to-call number for the donor. */
