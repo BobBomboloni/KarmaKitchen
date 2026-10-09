@@ -198,6 +198,14 @@ object NgoState {
         }
     }
 
+    /** Nobody here took offer [id] in time, so [carrier] (a Karma Rider or a courier) brings it instead. */
+    fun dispatch(id: String, carrier: String, eta: Int) {
+        replace(id) { if (it.stage == OfferStage.Offered) it.copy(stage = OfferStage.OnTheWay, volunteer = carrier, etaMinutes = eta) else it }
+        DonationLog.update(id) {
+            if (it.stage == 0) it.copy(ngo = NGO_NAME, status = STATUS_ON_THE_WAY, stage = 1, volunteer = carrier, etaMinutes = eta) else it
+        }
+    }
+
     fun decline(id: String) {
         if (id !in declined) declined.add(id)
     }

@@ -826,6 +826,7 @@ fun NgoOffersScreen(navController: NavController) {
                         OnTheWayCard(
                             donation = donation,
                             onLogIntake = { startIntake(donation.id) },
+                            onTrack = { navController.navigate(Screen.TrackPickup.routeFor(donation.id, ngoSide = true)) },
                             modifier = Modifier.padding(horizontal = Gutter)
                         )
                     }
@@ -995,7 +996,7 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
 }
 
 @Composable
-private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifier: Modifier = Modifier) {
+private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, onTrack: () -> Unit, modifier: Modifier = Modifier) {
     val eta = donation.etaMinutes ?: 0
     // Close to the door once only a few minutes are left.
     val stage = if (eta > 15) 1 else 2
@@ -1019,17 +1020,32 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
         Spacer(Modifier.height(14.dp))
         DeliverySteps(listOf("Accepted", "Picked up", "Arriving"), stage)
         Spacer(Modifier.height(14.dp))
-        KarmaButton(
-            onClick = onLogIntake,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
-        ) {
-            Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Log intake", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            KarmaOutlinedButton(
+                onClick = onTrack,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Icon(Icons.Filled.LocationOn, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Track live", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
+            }
+            KarmaButton(
+                onClick = onLogIntake,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen),
+                contentPadding = PaddingValues(horizontal = 12.dp)
+            ) {
+                Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Log intake", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
