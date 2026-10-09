@@ -116,6 +116,10 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.api.FoodAnalysisResult
 import com.example.api.analyzeFoodWithGemini
+import com.example.cloud.Account
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
+import com.example.cloud.DonationDoc
 import com.example.api.uriToBase64
 import com.example.ui.DonationChatbot
 import com.example.ui.ScannerAnimation
@@ -349,6 +353,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                         draft.clearScan()
                         showCamera = true
                     },
+                    onRetryScan = { draft.photo?.let { analyzeUri(it) } },
                     onContinue = { step = 2 }
                 )
                 2 -> DetailsStep(draft = draft, onBack = { step = 1 }, onNext = { step = 3 })
@@ -359,6 +364,30 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                     onConfirm = {
                         val id = java.util.UUID.randomUUID().toString()
                         val category = guessCategory(draft.title)
+                        val donor = Account.user
+                        if (Cloud.enabled && donor != null) {
+                            // Every NGO sees it as a new offer; the donor's home follows it from the cloud.
+                            CloudSync.postDonation(
+                                DonationDoc(
+                                    id = id,
+                                    donorId = donor.uid,
+                                    donorName = donor.name.trim().ifBlank { "A donor" },
+                                    donorPhone = donor.phone.trim(),
+                                    title = draft.title.trim(),
+                                    servings = servingsCount(draft.servings),
+                                    isVeg = draft.isVeg,
+                                    shelfLife = draft.shelfLife.trim(),
+                                    quality = draft.quality,
+                                    category = category,
+                                    coins = draft.coins,
+                                    pickupWindow = draft.window.label,
+                                    note = draft.note.trim(),
+                                    address = draft.address.trim()
+                                )
+                            )
+                            step = 4
+                            return@PickupStep
+                        }
                         DonationLog.add(
                             DonationItem(
                                 title = draft.title.trim(),
@@ -613,6 +642,7 @@ private fun PhotoStep(
     onTakePhoto: () -> Unit,
     onPickGallery: () -> Unit,
     onRescan: () -> Unit,
+    onRetryScan: () -> Unit,
     onContinue: () -> Unit
 ) {
     val result = draft.analysis
@@ -665,7 +695,11 @@ private fun PhotoStep(
                 }
             }
 
-            draft.error?.let { message -> item { ErrorCard(message) } }
+            draft.error?.let { message ->
+                // A busy or unreachable AI can be tried again with the same photo.
+                val canRetry = photo != null && result == null && !draft.analyzing
+                item { ErrorCard(message, onRetry = if (canRetry) onRetryScan else null) }
+            }
 
             item { SafetyChat(open = chatOpen, onToggle = { chatOpen = !chatOpen }) }
 
@@ -1066,7 +1100,7 @@ private fun UnsafeNotice(reason: String?) {
 }
 
 @Composable
-private fun ErrorCard(message: String) {
+private fun ErrorCard(message: String, onRetry: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1078,6 +1112,11 @@ private fun ErrorCard(message: String) {
         Icon(Icons.Filled.Warning, contentDescription = null, tint = DangerColor)
         Spacer(Modifier.width(10.dp))
         Text(message, style = MaterialTheme.typography.bodySmall, color = OnDangerContainer, modifier = Modifier.weight(1f))
+        if (onRetry != null) {
+            TextButton(onClick = onRetry) {
+                Text("Try again", color = OnDangerContainer, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }
 

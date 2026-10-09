@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
+import com.example.cloud.currentNgoName
 import java.util.UUID
 
 /** Where the NGO this phone represents is based. */
@@ -29,8 +32,11 @@ data class NgoDonation(
     val receivedText: String? = null,
     /** Photo the donor took, as a Uri string. */
     val photo: String? = null,
-    /** True when it was posted from the Donate screen on this phone. */
-    val fromDonor: Boolean = false
+    /** True when a real donor posted it (from the Donate screen on this phone, or from the cloud). */
+    val fromDonor: Boolean = false,
+    /** Where to collect it. Only donations from the cloud carry it. */
+    val address: String = "",
+    val donorPhone: String = ""
 )
 
 data class StockItem(
@@ -168,6 +174,15 @@ object NgoState {
         peopleServed = 1280
     }
 
+    /**
+     * Swaps in the donations from the cloud (offers open to every NGO, plus the ones this NGO has
+     * accepted). Declined offers stay hidden on this phone.
+     */
+    fun replaceDonations(fromCloud: List<NgoDonation>) {
+        donations.clear()
+        donations.addAll(fromCloud)
+    }
+
     val offers: List<NgoDonation> get() = donations.filter { it.stage == OfferStage.Offered && it.id !in declined }
     val onTheWay: List<NgoDonation> get() = donations.filter { it.stage == OfferStage.OnTheWay }
     val received: List<NgoDonation> get() = donations.filter { it.stage == OfferStage.Received }
@@ -190,6 +205,14 @@ object NgoState {
 
     fun accept(id: String) {
         val donation = donations.firstOrNull { it.id == id && it.stage == OfferStage.Offered } ?: return
+        if (Cloud.enabled) {
+            // No volunteer app yet: the NGO collects the food itself.
+            val ngoName = currentNgoName()
+            val eta = if (donation.distanceKm >= 0) etaMinutes(donation.distanceKm) else null
+            replace(id) { it.copy(stage = OfferStage.OnTheWay, volunteer = ngoName, etaMinutes = eta) }
+            CloudSync.accept(id, ngoName, eta)
+            return
+        }
         val volunteer = volunteerFor(id)
         val eta = etaMinutes(donation.distanceKm)
         replace(id) { it.copy(stage = OfferStage.OnTheWay, volunteer = volunteer, etaMinutes = eta) }
@@ -209,6 +232,11 @@ object NgoState {
         val hours = hoursFromExpiryText(intake?.expiry?.takeIf { it.isNotBlank() } ?: donation.shelfLife, fallback = 6)
         stock.add(0, StockItem(UUID.randomUUID().toString(), donation.title, "${donation.servings} servings", hours, donation.category))
         mealsToday += donation.servings
+        if (Cloud.enabled) {
+            // The donor's phone sees the change and adds the coins from the received donation.
+            CloudSync.markReceived(id, intake)
+            return
+        }
         DonationLog.update(id) { it.copy(status = STATUS_DELIVERED, stage = 2, etaMinutes = null) }
         if (donation.fromDonor) DonationLog.credit(id)
     }

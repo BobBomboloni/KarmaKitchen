@@ -1,6 +1,8 @@
 package com.example
 
 import androidx.compose.runtime.mutableStateListOf
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
 
 /**
  * Donations made from the Donate screen during this session, newest first. The home screen shows
@@ -12,6 +14,12 @@ object DonationLog {
 
     /** Coins the NGO has confirmed but the donor's wallet has not picked up yet. */
     val pendingCredits = mutableStateListOf<Int>()
+
+    /** Replaces everything with the signed-in donor's donations from the cloud, newest first. */
+    fun replaceAll(items: List<DonationItem>) {
+        submitted.clear()
+        submitted.addAll(items)
+    }
 
     fun add(item: DonationItem) {
         submitted.add(0, item)
@@ -25,6 +33,7 @@ object DonationLog {
     /** The donor has seen that donation [id] was delivered, so its card can leave the home screen. */
     fun acknowledge(id: String) {
         update(id) { it.copy(acknowledged = true) }
+        if (Cloud.enabled) CloudSync.acknowledge(id)
     }
 
     /** Queue the coins for donation [id]; the app adds them to the donor's balance. */

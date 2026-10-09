@@ -11,14 +11,29 @@ AI-powered surplus food redistribution (SDG 2, 12, 13). Android app built with K
 - Donor home: pickup location, a swipeable banner (the newest smile photo first, then donate, redeem points and a live food-waste counter), a tracker for the donation that is on its way, a food-type row that filters the NGOs asking for help, tier progress, a row of smile photos, rewards, community goal with top donors, recent donations and a live feed. NGO requests, the leaderboard, community totals, the feed and the tracker are made-up demo content (see `HomeData.kt`).
 - Smile Wall: an NGO opens a received donation, takes or picks a photo of the people who enjoyed the food (with a consent check) and sends it to the donor, who sees it on their Smile Wall. Photos are stored privately on the phone, so for now both roles share one device. Two sample photos are added on first launch so the wall is not empty; they also show under "Sent by you" on the receiver's Smiles tab.
 
+- Accounts and a shared backend (Firebase, free Spark plan): sign in with Google or email, pick donor or NGO once, and the profile is saved in Firestore. A donation posted on a donor's phone shows up live as an offer on every verified NGO's phone; when an NGO accepts it and later records it as received, the donor's tracker follows along and the coins are added. The balance is the coins on received donations minus coins spent in the store. Code is in `cloud/`, security rules in `firestore.rules`.
+- Gemini runs through Firebase AI Logic, so no API key is packed into the APK. A busy Gemini (HTTP 503) is retried for about 15 seconds and then tried on a lighter model; if it is still busy, the scan shows "Our AI is busy right now" with a Try again button.
+
+Without `app/google-services.json` the app runs in the old single-phone demo mode: no sign-in, both roles on one phone, and the AI features are off.
+
 ## Not built yet
-Auto-matching, collector role, real delivery tracking (the home tracker shows a demo donation), raw-material requests, and a shared backend (so smiles can reach the donor's own phone).
+Photos and smiles shared between phones (they stay on the phone that took them), NGO stock in the cloud, coin spending checked against the balance, push notifications, matching donors to the nearest NGO, auto-matching, collector role, live volunteer tracking and raw-material requests. With an account, NGO stock, the leaderboard, NGO requests, the feed and community totals are still demo content.
 
 ## Setup
-1. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` and `MAPS_API_KEY`.
-2. Open in Android Studio and run on a device or emulator (minSdk 24).
+Everything below is free and needs no card. Stay on Firebase's Spark plan.
 
-Note: the Gemini key is currently packaged in the APK. Before a public release, move AI calls behind Firebase AI Logic with App Check or a backend proxy, and restrict the Maps key to this app's package and signing SHA-1.
+1. Copy `.env.example` to `.env` and set `MAPS_API_KEY`. (`GEMINI_API_KEY` is no longer used.)
+2. Create a project at [console.firebase.google.com](https://console.firebase.google.com) and add an Android app with the package name `com.aistudio.karmakitchen.hxfm`. Add the SHA-1 of every computer that builds the app (Android Studio: Gradle panel > Tasks > android > signingReport, the `debug` variant).
+3. Authentication > Sign-in method: turn on **Google** and **Email/Password**.
+4. Download `google-services.json` (Project settings > Your apps) **after** turning on Google sign-in, and put it in `app/`. It is not a secret and is committed with the app.
+5. Firestore Database > Create database, location `asia-south1 (Mumbai)`, production mode. Then open Rules, paste in `firestore.rules` and press Publish.
+6. AI Logic > Get started > **Gemini Developer API**.
+7. App Check > Apps > register the Android app with **Play Integrity**. Leave enforcement off while testing. Debug builds print a debug token to Logcat (search for "debug secret"); add it under App Check > Manage debug tokens before turning enforcement on.
+8. Open in Android Studio and run on a device or emulator (minSdk 24).
+
+To test a donation end to end you need two accounts, ideally on two phones: sign up as a donor on one and as an NGO on the other. New NGOs cannot see or accept offers until they are verified: in Firestore, open `ngos/<the NGO's user id>` and set `verified` to `true`.
+
+Restrict the Maps key to this app's package and signing SHA-1 before a public release. The old Gemini key was packed into earlier APKs, so delete it in Google AI Studio.
 
 ## Brand logos
 The Karma Store shows partner logos on brand-coloured tiles. The bundled McDonald's, Swiggy, Spotify, Samsung, Puma, Nike, Zomato, Starbucks and Netflix marks come from [Simple Icons](https://simpleicons.org) (CC0). All brand names and logos are trademarks of their owners and are shown only to illustrate the rewards store in this prototype; a real release would need each partner's permission.

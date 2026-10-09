@@ -94,7 +94,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import androidx.compose.ui.platform.LocalContext
 import com.example.api.bitmapToBase64
+import com.example.cloud.Account
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
+import com.example.cloud.currentNgoName
 import com.example.api.verifyIntakeWithGemini
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.DangerColor
@@ -280,6 +285,8 @@ fun RoleCard(title: String, subtitle: String, art: Int, tint: Color, onClick: ()
 
 @Composable
 fun NgoDashboardScreen(navController: NavController) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val greeting = remember { greetingForHour(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) }
     val offers = NgoState.offers
     val onTheWay = NgoState.onTheWay
@@ -297,7 +304,8 @@ fun NgoDashboardScreen(navController: NavController) {
         item {
             NgoHeader(
                 greeting = greeting,
-                onSwitchRole = { navController.popBackStack(Screen.RoleSelection.route, false) }
+                onSwitchRole = { navController.popBackStack(Screen.RoleSelection.route, false) },
+                onSignOut = { scope.launch { Account.signOut(context) } }
             )
         }
 
@@ -431,8 +439,15 @@ fun NgoDashboardScreen(navController: NavController) {
 private val AccentCoralColor = Color(0xFFFF7468)
 
 @Composable
-private fun NgoHeader(greeting: String, onSwitchRole: () -> Unit) {
+private fun NgoHeader(greeting: String, onSwitchRole: () -> Unit, onSignOut: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
+    // With an account the header shows the signed-in NGO; the tick only appears once it is verified.
+    val verified = !Cloud.enabled || Account.user?.ngoVerified == true
+    val area = if (Cloud.enabled) {
+        if (verified) Account.user?.address?.takeIf { it.isNotBlank() } ?: "" else "Waiting to be verified"
+    } else {
+        NGO_AREA
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -453,7 +468,7 @@ private fun NgoHeader(greeting: String, onSwitchRole: () -> Unit) {
             Text(greeting, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    NGO_NAME,
+                    currentNgoName(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary,
@@ -461,10 +476,14 @@ private fun NgoHeader(greeting: String, onSwitchRole: () -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Filled.Verified, contentDescription = "Verified", tint = InfoColor, modifier = Modifier.size(18.dp))
+                if (verified) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Filled.Verified, contentDescription = "Verified", tint = InfoColor, modifier = Modifier.size(18.dp))
+                }
             }
-            Text(NGO_AREA, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            if (area.isNotBlank()) {
+                Text(area, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
@@ -472,10 +491,10 @@ private fun NgoHeader(greeting: String, onSwitchRole: () -> Unit) {
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    text = { Text("Switch to donor") },
+                    text = { Text(if (Cloud.enabled) "Sign out" else "Switch to donor") },
                     onClick = {
                         menuOpen = false
-                        onSwitchRole()
+                        if (Cloud.enabled) onSignOut() else onSwitchRole()
                     }
                 )
             }
@@ -788,12 +807,13 @@ fun NgoOffersScreen(navController: NavController) {
             }
 
             if (tab == 0) {
+                val problem = CloudSync.ngoProblem
                 if (offers.isEmpty()) {
                     item {
                         EmptyState(
                             R.drawable.illus_step_pickup,
-                            "No new offers",
-                            "When a donor posts food nearby, it shows up here."
+                            if (problem != null) "Offers are not open yet" else "No new offers",
+                            problem ?: "When a donor posts food nearby, it shows up here."
                         )
                     }
                 } else {
@@ -802,7 +822,11 @@ fun NgoOffersScreen(navController: NavController) {
                             donation = donation,
                             onAccept = {
                                 NgoState.accept(donation.id)
-                                banner = "Accepted. ${volunteerFor(donation.id)} will collect it from ${donation.donor}."
+                                banner = if (Cloud.enabled) {
+                                    "Accepted. ${donation.donor} has been told you are on the way."
+                                } else {
+                                    "Accepted. ${volunteerFor(donation.id)} will collect it from ${donation.donor}."
+                                }
                             },
                             onDecline = {
                                 NgoState.decline(donation.id)
@@ -963,7 +987,7 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoChip(Icons.Filled.LocationOn, "${"%.1f".format(donation.distanceKm)} km · ${donation.donor}")
+            InfoChip(Icons.Filled.LocationOn, donationPlace(donation))
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -973,6 +997,7 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
             Spacer(Modifier.height(8.dp))
             Text("Note: ${donation.note}", style = MaterialTheme.typography.bodySmall, color = TextTertiary)
         }
+        PickupDetails(donation)
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             KarmaOutlinedButton(
@@ -996,9 +1021,13 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
 
 @Composable
 private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifier: Modifier = Modifier) {
-    val eta = donation.etaMinutes ?: 0
-    // Close to the door once only a few minutes are left.
-    val stage = if (eta > 15) 1 else 2
+    val eta = donation.etaMinutes
+    // Close to the door once only a few minutes are left. Without an estimate it stays at "Accepted".
+    val stage = when {
+        eta == null -> 0
+        eta > 15 -> 1
+        else -> 2
+    }
     NgoCard(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             CategoryTile(donation.category)
@@ -1011,11 +1040,12 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
                     color = TextSecondary
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            if (eta != null) Column(horizontalAlignment = Alignment.End) {
                 Text("$eta", style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
                 Text("min", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
+        PickupDetails(donation)
         Spacer(Modifier.height(14.dp))
         DeliverySteps(listOf("Accepted", "Picked up", "Arriving"), stage)
         Spacer(Modifier.height(14.dp))
@@ -1405,5 +1435,36 @@ fun NgoSmilesScreen(navController: NavController) {
                 }
             }
         }
+    }
+}
+
+/** "1.4 km · Hotel Saffron", or just the donor when the distance is not known. */
+internal fun donationPlace(donation: NgoDonation): String = when {
+    donation.distanceKm >= 0 -> "${"%.1f".format(donation.distanceKm)} km · ${donation.donor}"
+    else -> donation.donor
+}
+
+/** Where to collect a donation from the cloud, and a tap-to-call number for the donor. */
+@Composable
+private fun PickupDetails(donation: NgoDonation) {
+    if (donation.address.isBlank() && donation.donorPhone.isBlank()) return
+    val context = LocalContext.current
+    Spacer(Modifier.height(10.dp))
+    if (donation.address.isNotBlank()) {
+        Text("Pickup at ${donation.address}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+    }
+    if (donation.donorPhone.isNotBlank()) {
+        Text(
+            "Call ${donation.donor}: ${donation.donorPhone}",
+            style = MaterialTheme.typography.bodySmall,
+            color = PrimaryGreen,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .clickable {
+                    val dial = android.content.Intent(android.content.Intent.ACTION_DIAL, Uri.parse("tel:${donation.donorPhone}"))
+                    runCatching { context.startActivity(dial) }
+                }
+        )
     }
 }
