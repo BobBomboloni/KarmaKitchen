@@ -32,7 +32,7 @@ import kotlinx.coroutines.tasks.await
 const val ROLE_DONOR = "donor"
 const val ROLE_NGO = "ngo"
 
-private const val USERS = "users"
+internal const val USERS = "users"
 private const val NGOS = "ngos"
 
 /** The signed-in person's `users/{uid}` document, plus their NGO's details for NGO accounts. */
@@ -43,6 +43,7 @@ data class CloudUser(
     val email: String,
     val phone: String = "",
     val address: String = "",
+    val coinsEarned: Int = 0,
     val coinsSpent: Int = 0,
     val ngoName: String = "",
     val ngoVerified: Boolean = false
@@ -117,6 +118,7 @@ object Account {
                 email = snap.getString("email") ?: firebaseUser.email ?: "",
                 phone = snap.getString("phone") ?: "",
                 address = snap.getString("address") ?: "",
+                coinsEarned = snap.getLong("coinsEarned")?.toInt() ?: 0,
                 coinsSpent = snap.getLong("coinsSpent")?.toInt() ?: 0,
                 ngoName = user?.ngoName ?: "",
                 ngoVerified = user?.ngoVerified ?: false
@@ -212,6 +214,7 @@ object Account {
                 "email" to (firebaseUser.email ?: ""),
                 "phone" to phone.trim(),
                 "address" to "",
+                "coinsEarned" to 0,
                 "coinsSpent" to 0,
                 "createdAt" to FieldValue.serverTimestamp()
             )
@@ -240,27 +243,20 @@ object Account {
     }
 
     /**
-     * Saves profile edits. [spent] is how many coins were just spent in the store; the total only
-     * ever goes up, and the balance shown is coins earned minus coins spent.
+     * Saves profile edits. Coins are not changed here: they are earned when an NGO receives a
+     * donation and spent through [CloudSync.purchase].
      */
-    fun saveProfile(profile: UserProfile, spent: Int) {
+    fun saveProfile(profile: UserProfile) {
         val current = user ?: return
-        user = current.copy(
-            name = profile.name,
-            email = profile.email,
-            phone = profile.phone,
-            address = profile.address,
-            coinsSpent = current.coinsSpent + spent.coerceAtLeast(0)
-        )
-        val changes = mutableMapOf<String, Any>(
-            "name" to profile.name,
-            "email" to profile.email,
-            "phone" to profile.phone,
-            "address" to profile.address
-        )
-        if (spent > 0) changes["coinsSpent"] = FieldValue.increment(spent.toLong())
-        db.collection(USERS).document(current.uid).update(changes)
-            .addOnFailureListener { Log.e("Account", "Could not save the profile", it) }
+        user = current.copy(name = profile.name, email = profile.email, phone = profile.phone, address = profile.address)
+        db.collection(USERS).document(current.uid).update(
+            mapOf(
+                "name" to profile.name,
+                "email" to profile.email,
+                "phone" to profile.phone,
+                "address" to profile.address
+            )
+        ).addOnFailureListener { Log.e("Account", "Could not save the profile", it) }
     }
 
     suspend fun signOut(context: Context) {

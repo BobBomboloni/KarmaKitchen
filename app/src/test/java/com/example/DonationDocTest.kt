@@ -4,7 +4,6 @@ import com.example.cloud.DonationDoc
 import com.example.cloud.STATE_OFFERED
 import com.example.cloud.STATE_ON_THE_WAY
 import com.example.cloud.STATE_RECEIVED
-import com.example.cloud.earnedCoins
 import com.example.cloud.friendlyDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -90,14 +89,12 @@ class DonationDocTest {
     }
 
     @Test
-    fun onlyReceivedDonationsEarnCoins() {
-        val docs = listOf(
-            doc(STATE_RECEIVED, coins = 500),
-            doc(STATE_ON_THE_WAY, coins = 300),
-            doc(STATE_OFFERED, coins = 200),
-            doc(STATE_RECEIVED, coins = 150)
-        )
-        assertEquals(650, earnedCoins(docs))
+    fun photoFlagTravelsToTheNgo() {
+        val withPhoto = doc().copy(hasPhoto = true)
+        assertEquals(true, withPhoto.toCreateMap()["hasPhoto"])
+        assertTrue(DonationDoc.fromMap("d1", withPhoto.toCreateMap())!!.hasPhoto)
+        assertTrue(withPhoto.toNgoDonation(now, ist).hasCloudPhoto)
+        assertFalse(doc().toNgoDonation(now, ist).hasCloudPhoto)
     }
 
     @Test

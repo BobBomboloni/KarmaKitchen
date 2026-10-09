@@ -86,9 +86,7 @@ import com.example.api.FoodAnalysisResult
 import com.example.cloud.Account
 import com.example.cloud.AccountStatus
 import com.example.cloud.Cloud
-import com.example.cloud.CloudSync
 import com.example.cloud.ROLE_NGO
-import com.example.cloud.earnedCoins
 
 import com.example.api.IntakeAnalysisResult
 import com.example.api.verifyIntakeWithGemini
@@ -210,8 +208,8 @@ private fun AppContent(startDestination: String) {
     LaunchedEffect(localProfile) { if (!Cloud.enabled) saveProfile(appContext, localProfile) }
     remember(appContext) { SmileStore.load(appContext) }
 
-    // With an account, the profile comes from Firestore and the balance is coins earned from
-    // received donations minus coins spent in the store.
+    // With an account, the profile comes from Firestore and the balance is the coins NGOs credited
+    // for received donations minus coins spent in the store.
     val userProfile by remember {
         derivedStateOf {
             val cloudUser = Account.user
@@ -221,7 +219,7 @@ private fun AppContent(startDestination: String) {
                     email = cloudUser.email,
                     phone = cloudUser.phone,
                     address = cloudUser.address,
-                    karmaPoints = (earnedCoins(CloudSync.donorDonations) - cloudUser.coinsSpent).coerceAtLeast(0)
+                    karmaPoints = (cloudUser.coinsEarned - cloudUser.coinsSpent).coerceAtLeast(0)
                 )
             } else {
                 localProfile
@@ -231,7 +229,7 @@ private fun AppContent(startDestination: String) {
     val updateProfile: (UserProfile) -> Unit = remember {
         { updated: UserProfile ->
             if (Cloud.enabled) {
-                Account.saveProfile(updated, spent = userProfile.karmaPoints - updated.karmaPoints)
+                Account.saveProfile(updated)
             } else {
                 localProfile = updated
             }

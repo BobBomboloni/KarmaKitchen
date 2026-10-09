@@ -37,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
+import com.example.cloud.cloudJpeg
 import com.example.ui.theme.*
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -380,20 +383,27 @@ fun SendSmileScreen(navController: NavController, receivalId: String) {
         scope.launch {
             try {
                 val id = UUID.randomUUID().toString()
-                val path = saveSmilePhoto(context, source, id)
-                SmileStore.add(
-                    context,
+                val text = message.trim().ifBlank { "Thank you!" }
+                val entry = if (Cloud.enabled) {
+                    // Goes to the donor's own phone.
+                    CloudSync.sendSmile(id, receival.id, receival.title, text, people, cloudJpeg(context, source))
+                        ?: run {
+                            error = "This donation is not one your NGO received, so the photo cannot be sent."
+                            return@launch
+                        }
+                } else {
                     SmileEntry(
                         id = id,
                         donationId = receival.id,
                         donationTitle = receival.title,
                         ngoName = NGO_NAME,
-                        message = message.trim().ifBlank { "Thank you!" },
+                        message = text,
                         people = people,
-                        photoPath = path,
+                        photoPath = saveSmilePhoto(context, source, id),
                         sentAt = System.currentTimeMillis()
                     )
-                )
+                }
+                SmileStore.add(context, entry)
                 sent = true
             } catch (e: Exception) {
                 error = "Could not save that photo. Please try another one."

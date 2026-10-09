@@ -36,7 +36,9 @@ data class NgoDonation(
     val fromDonor: Boolean = false,
     /** Where to collect it. Only donations from the cloud carry it. */
     val address: String = "",
-    val donorPhone: String = ""
+    val donorPhone: String = "",
+    /** The donor's photo is saved in the cloud with the donation (loaded by [CloudPhotos]). */
+    val hasCloudPhoto: Boolean = false
 )
 
 data class StockItem(

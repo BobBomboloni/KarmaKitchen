@@ -90,6 +90,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.cloud.Cloud
+import com.example.cloud.CloudSync
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.DangerColor
 import com.example.ui.theme.MealsCardBg
@@ -160,8 +162,13 @@ fun KarmaStoreScreen(navController: NavController, userProfile: UserProfile, onP
                 )
             }
         }
-        VoucherStore.add(context, bought)
-        onProfileUpdate(userProfile.copy(karmaPoints = balance - total))
+        if (Cloud.enabled) {
+            // Saves the rewards and the coins spent together; the account's balance follows.
+            CloudSync.purchase(bought, total)
+        } else {
+            VoucherStore.add(context, bought)
+            onProfileUpdate(userProfile.copy(karmaPoints = balance - total))
+        }
         receipt = bought
         cart = emptyMap()
         page = StorePage.Receipt
