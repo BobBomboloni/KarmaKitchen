@@ -29,7 +29,7 @@ import java.io.ByteArrayOutputStream
  * about 15 seconds, first on [PRIMARY_MODEL] and then on [FALLBACK_MODEL]. Any other error goes
  * straight to the fallback model.
  */
-private const val PRIMARY_MODEL = "gemini-3.5-flash"
+private const val PRIMARY_MODEL = "gemini-3.6-flash"
 private const val FALLBACK_MODEL = "gemini-flash-lite-latest"
 private val RETRY_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L)
 
