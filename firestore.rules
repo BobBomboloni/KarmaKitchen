@@ -6,6 +6,11 @@ rules_version = '2';
 // The rules are what keep coins honest: a donor can post a donation, but only the verified NGO
 // that accepted it can mark it received, and that same write is the only way coins are added to
 // the donor's balance. Spending in the store can never take the balance below zero.
+//
+// A donation moves offered -> accepted -> on_the_way -> received. While accepted it can be put
+// back up, and until it is picked up its donor can cancel it. Phone numbers stay out of the
+// donation itself: the donor's and the runner's sit in donations/{id}/private, which only the
+// donor and the NGO that accepted it can read.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -21,6 +26,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
+    function ngoPath(uid) {
+      return /databases/$(database)/documents/ngos/$(uid);
+    }
+
     function donationPath(donationId) {
       return /databases/$(database)/documents/donations/$(donationId);
     }
@@ -30,10 +39,12 @@ service cloud.firestore {
     }
 
     // NGOs are verified by hand: set `verified` to true on ngos/{uid} in the console.
+    function isVerifiedNgoId(uid) {
+      return exists(ngoPath(uid)) && get(ngoPath(uid)).data.verified == true;
+    }
+
     function isVerifiedNgo() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/ngos/$(request.auth.uid))
-        && get(/databases/$(database)/documents/ngos/$(request.auth.uid)).data.verified == true;
+      return signedIn() && isVerifiedNgoId(request.auth.uid);
     }
 
     function changesOnly(keys) {
@@ -45,6 +56,26 @@ service cloud.firestore {
       return value is bytes && value.size() > 0 && value.size() <= 512 * 1024;
     }
 
+    function isNumberOrNull(value) {
+      return value == null || value is number;
+    }
+
+    // How the food reaches the NGO. A pickup names no NGO; a drop-off names the verified NGO the
+    // donor will bring it to. Donations from before drop-offs have no deliveryType: a pickup.
+    function isValidDelivery(data) {
+      let type = data.get('deliveryType', 'ngo_pickup');
+      let dropOffNgoId = data.get('dropOffNgoId', null);
+      let dropOffNgoName = data.get('dropOffNgoName', null);
+      return ((type == 'ngo_pickup' && dropOffNgoId == null)
+          || (type == 'donor_dropoff' && dropOffNgoId is string && isVerifiedNgoId(dropOffNgoId)))
+        && (dropOffNgoName == null || dropOffNgoName is string);
+    }
+
+    // Coins a received donation earns its donor. Bringing the food in yourself earns 25 more.
+    function coinsFor(donation) {
+      return donation.coins + (donation.get('deliveryType', 'ngo_pickup') == 'donor_dropoff' ? 25 : 0);
+    }
+
     // True when this write is the NGO marking [donationId] received, which credits its coins
     // to [donorId]. The donation rules below require the matching credit in the same write.
     function creditsDonation(donorId, donationId) {
@@ -52,9 +83,9 @@ service cloud.firestore {
       let after = getAfter(donationPath(donationId)).data;
       return before.donorId == donorId
         && before.ngoId == request.auth.uid
-        && before.status == 'on_the_way'
+        && before.status in ['accepted', 'on_the_way']
         && after.status == 'received'
-        && request.resource.data.get('coinsEarned', 0) == resource.data.get('coinsEarned', 0) + before.coins;
+        && request.resource.data.get('coinsEarned', 0) == resource.data.get('coinsEarned', 0) + coinsFor(before);
     }
 
     match /users/{uid} {
@@ -92,13 +123,46 @@ service cloud.firestore {
     }
 
     match /ngos/{ngoId} {
+      // Where the NGO is and its public phone, shown to donors who bring food in.
+      function isValidNgo(data) {
+        return data.get('lat', 0) is number
+          && data.get('lng', 0) is number
+          && data.get('geohash', '') is string
+          && data.get('address', '') is string
+          && data.get('address', '').size() <= 300
+          && data.get('phone', '') is string
+          && data.get('phone', '').size() <= 20;
+      }
+
       allow read: if signedIn();
-      allow create: if isMe(ngoId) && request.resource.data.verified == false;
-      allow update: if isMe(ngoId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verified']);
+      allow create: if isMe(ngoId)
+        && request.resource.data.verified == false
+        && isValidNgo(request.resource.data);
+      allow update: if isMe(ngoId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verified'])
+        && isValidNgo(request.resource.data);
       allow delete: if false;
     }
 
     match /donations/{donationId} {
+      function isDonor() {
+        return resource.data.donorId == request.auth.uid;
+      }
+
+      // The NGO that accepted this donation.
+      function isAcceptingNgo() {
+        return resource.data.ngoId == request.auth.uid;
+      }
+
+      function statusMoves(fromStatuses, toStatus) {
+        return resource.data.status in fromStatuses && request.resource.data.status == toStatus;
+      }
+
+      // An offer can be taken until its eat-by time. Older donations have none.
+      function isFresh() {
+        return resource.data.get('eatBy', null) == null || request.time < resource.data.eatBy;
+      }
+
       // Donors see their own; verified NGOs see open offers and the ones they accepted.
       allow read: if signedIn() && (
         resource.data.donorId == request.auth.uid
@@ -119,26 +183,64 @@ service cloud.firestore {
         // Coins follow FoodRules.kt: at most 50 counted servings at 50 coins each.
         && request.resource.data.coins is int
         && request.resource.data.coins >= 0
-        && request.resource.data.coins <= 2500;
+        && request.resource.data.coins <= 2500
+        && isValidDelivery(request.resource.data)
+        // The donor's phone goes in private/donor, never in the donation every NGO can read.
+        && request.resource.data.get('donorPhone', '') == ''
+        // A missing eatBy reads as request.time, which passes.
+        && request.resource.data.get('eatBy', request.time) is timestamp
+        && isNumberOrNull(request.resource.data.get('lat', null))
+        && isNumberOrNull(request.resource.data.get('lng', null))
+        && request.resource.data.get('geohash', '') is string;
 
       allow update: if signedIn() && (
-        // A verified NGO accepts an open offer.
-        (resource.data.status == 'offered'
-          && request.resource.data.status == 'on_the_way'
+        // A verified NGO accepts an open offer, unless its eat-by time has passed or the donor is
+        // bringing it to a different NGO.
+        (statusMoves(['offered'], 'accepted')
           && request.resource.data.ngoId == request.auth.uid
           && isVerifiedNgo()
+          && resource.data.get('dropOffNgoId', null) in [null, request.auth.uid]
+          && isFresh()
           && changesOnly(['status', 'ngoId', 'ngoName', 'volunteer', 'etaMinutes', 'acceptedAt', 'updatedAt']))
+        // The food has been picked up (by the runner, or by the donor for a drop-off).
+        || (statusMoves(['accepted'], 'on_the_way')
+          && (isAcceptingNgo() || isDonor())
+          && changesOnly(['status', 'pickedUpAt', 'updatedAt']))
         // The NGO that accepted it records that the food arrived, and in the same write adds the
-        // donation's coins to the donor's balance.
-        || (resource.data.status == 'on_the_way'
-          && request.resource.data.status == 'received'
-          && resource.data.ngoId == request.auth.uid
+        // donation's coins (plus any drop-off bonus) to the donor's balance. The food can arrive
+        // straight from accepted when nobody tapped "picked up".
+        || (statusMoves(['accepted', 'on_the_way'], 'received')
+          && isAcceptingNgo()
           && changesOnly(['status', 'intake', 'receivedAt', 'updatedAt'])
           && getAfter(userPath(resource.data.donorId)).data.get('lastCreditFor', '') == donationId
           && getAfter(userPath(resource.data.donorId)).data.get('coinsEarned', 0)
-            == get(userPath(resource.data.donorId)).data.get('coinsEarned', 0) + resource.data.coins)
+            == get(userPath(resource.data.donorId)).data.get('coinsEarned', 0) + coinsFor(resource.data))
+        // The accepting NGO or the donor puts it back up for any NGO to take.
+        || (statusMoves(['accepted'], 'offered')
+          && (isAcceptingNgo() || isDonor())
+          && request.resource.data.get('ngoId', null) == null
+          && request.resource.data.get('ngoName', null) == null
+          && request.resource.data.get('volunteer', null) == null
+          && request.resource.data.get('etaMinutes', null) == null
+          && changesOnly(['status', 'ngoId', 'ngoName', 'volunteer', 'etaMinutes', 'acceptedAt', 'updatedAt']))
+        // The donor withdraws it before it has been picked up.
+        || (statusMoves(['offered', 'accepted'], 'cancelled')
+          && isDonor()
+          && changesOnly(['status', 'cancelledAt', 'updatedAt']))
+        // While it is open, the donor switches between pickup and drop-off.
+        || (resource.data.status == 'offered'
+          && isDonor()
+          && isValidDelivery(request.resource.data)
+          && changesOnly(['deliveryType', 'dropOffNgoId', 'dropOffNgoName', 'updatedAt']))
+        // The NGO a drop-off is addressed to turns it into a pickup any NGO can collect.
+        || (resource.data.status == 'offered'
+          && resource.data.get('dropOffNgoId', null) == request.auth.uid
+          && request.resource.data.deliveryType == 'ngo_pickup'
+          && request.resource.data.get('dropOffNgoId', null) == null
+          && request.resource.data.get('dropOffNgoName', null) == null
+          && changesOnly(['deliveryType', 'dropOffNgoId', 'dropOffNgoName', 'updatedAt']))
         // The donor dismisses the "Delivered" card.
-        || (resource.data.donorId == request.auth.uid
+        || (isDonor()
           && changesOnly(['donorAcknowledged']))
       );
 
@@ -161,6 +263,42 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['jpeg', 'createdAt'])
           && isSmallPhoto(request.resource.data.jpeg);
         allow update, delete: if false;
+      }
+
+      // Phone numbers: private/donor (the donor's) and private/runner (the person the NGO sends).
+      // Only the donor and the NGO that accepted the donation can read them, so NGOs browsing
+      // open offers never see the donor's number.
+      match /private/{who} {
+        function donation() {
+          return get(donationPath(donationId)).data;
+        }
+
+        function donationAfter() {
+          return getAfter(donationPath(donationId)).data;
+        }
+
+        function isPhoneOnly(data) {
+          return data.keys().hasOnly(['phone'])
+            && data.phone is string
+            && data.phone.size() <= 20;
+        }
+
+        allow read: if signedIn()
+          && who in ['donor', 'runner']
+          && (donation().donorId == request.auth.uid || donation().ngoId == request.auth.uid);
+        // Written in the same batch that posts the donation (it does not exist before this write).
+        allow create: if signedIn()
+          && who == 'donor'
+          && !exists(donationPath(donationId))
+          && donationAfter().donorId == request.auth.uid
+          && isPhoneOnly(request.resource.data);
+        // Written by the NGO with its accept, and again if it sends someone else.
+        allow create, update: if signedIn()
+          && who == 'runner'
+          && donationAfter().ngoId == request.auth.uid
+          && donationAfter().status == 'accepted'
+          && isPhoneOnly(request.resource.data);
+        allow delete: if false;
       }
     }
 

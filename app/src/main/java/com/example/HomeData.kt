@@ -67,9 +67,13 @@ fun ngosAccepting(category: FoodCategory?, all: List<NgoRequest> = sampleNgoRequ
     all.filter { category == null || category in it.accepts }
         .sortedWith(compareByDescending<NgoRequest> { it.urgent }.thenBy { it.distanceKm })
 
-const val STATUS_ON_THE_WAY = "On the way"
 const val STATUS_POSTED = "Waiting for pickup"
+const val STATUS_ACCEPTED = "Accepted"
+const val STATUS_ON_THE_WAY = "On the way"
 const val STATUS_DELIVERED = "Delivered"
+const val STATUS_CANCELLED = "Cancelled"
+/** Nobody collected it before it had to be eaten. */
+const val STATUS_EXPIRED = "Expired"
 
 data class DonationItem(
     val title: String,
@@ -80,14 +84,32 @@ data class DonationItem(
     val category: FoodCategory,
     val volunteer: String? = null,
     val etaMinutes: Int? = null,
-    /** 0 = posted and waiting for a volunteer, 1 = picked up and on the way, 2 = delivered. */
-    val stage: Int = 1,
+    /** 0 = posted, 1 = an NGO accepted it, 2 = picked up and on the way, 3 = delivered. */
+    val stage: Int = 2,
     /** Links a donation made on this phone to the NGO's copy of it. */
     val id: String = java.util.UUID.randomUUID().toString(),
-    /** True once the donor has seen the "Delivered" card on the home screen and dismissed it. */
-    val acknowledged: Boolean = false
+    /** True once the donor has seen the "Delivered" (or "Expired") card on the home screen and dismissed it. */
+    val acknowledged: Boolean = false,
+    // The rest only comes from the cloud, where the donor can follow and change the pickup.
+    val servings: Int = 0,
+    val address: String = "",
+    /** The donor is bringing it to [dropOffNgoName] themselves. */
+    val dropOff: Boolean = false,
+    val dropOffNgoId: String? = null,
+    val dropOffNgoName: String? = null,
+    /** The NGO that accepted it. */
+    val ngoId: String? = null,
+    val createdAtMs: Long = 0L,
+    val acceptedAtMs: Long? = null,
+    val eatByMs: Long? = null,
+    /** Where it is being collected from, when known. */
+    val place: Place? = null
 ) {
-    val inTransit: Boolean get() = status != STATUS_DELIVERED
+    val inTransit: Boolean get() = status == STATUS_POSTED || status == STATUS_ACCEPTED || status == STATUS_ON_THE_WAY
+
+    /** Still waiting for an NGO, but past the time the food had to be eaten by. */
+    fun isExpired(nowMs: Long): Boolean =
+        status == STATUS_EXPIRED || (status == STATUS_POSTED && eatByMs != null && nowMs >= eatByMs)
 }
 
 /** Best guess of what kind of food a dish name describes, for the picture next to a donation. */
