@@ -89,6 +89,59 @@ class NgoStateTest {
         assertEquals(listOf(600), DonationLog.pendingCredits.toList())
     }
 
+    @Test fun theRunnerPicksItUpBeforeItArrives() {
+        DonationLog.add(logged())
+        NgoState.post(offer())
+        NgoState.accept("d1", runnerName = "Priya", eta = 15)
+        assertEquals(OfferStage.Accepted, NgoState.donations.first { it.id == "d1" }.stage)
+        val accepted = DonationLog.submitted.first { it.id == "d1" }
+        assertEquals(STATUS_ACCEPTED, accepted.status)
+        assertEquals("Priya", accepted.volunteer)
+        assertEquals(15, accepted.etaMinutes)
+
+        NgoState.markPickedUp("d1")
+        assertEquals(OfferStage.OnTheWay, NgoState.donations.first { it.id == "d1" }.stage)
+        assertTrue(NgoState.onTheWay.any { it.id == "d1" })
+        val pickedUp = DonationLog.submitted.first { it.id == "d1" }
+        assertEquals(STATUS_ON_THE_WAY, pickedUp.status)
+        assertEquals(2, pickedUp.stage)
+
+        NgoState.markReceived("d1", null)
+        assertEquals(3, DonationLog.submitted.first { it.id == "d1" }.stage)
+    }
+
+    @Test fun anNgoCanPutAnAcceptedOfferBackUp() {
+        DonationLog.add(logged())
+        NgoState.post(offer())
+        NgoState.accept("d1")
+        NgoState.release("d1")
+        assertTrue(NgoState.offers.any { it.id == "d1" })
+        assertTrue(NgoState.onTheWay.none { it.id == "d1" })
+        val back = DonationLog.submitted.first { it.id == "d1" }
+        assertEquals(STATUS_POSTED, back.status)
+        assertEquals(0, back.stage)
+        assertNull(back.volunteer)
+        // Once picked up it can no longer be put back up.
+        NgoState.accept("d1")
+        NgoState.markPickedUp("d1")
+        NgoState.release("d1")
+        assertEquals(OfferStage.OnTheWay, NgoState.donations.first { it.id == "d1" }.stage)
+    }
+
+    @Test fun offersAreNearestFirstAndHideWhatThisNgoCannotTake() {
+        val now = System.currentTimeMillis()
+        NgoState.replaceDonations(
+            listOf(
+                offer("far").copy(distanceKm = 6.0),
+                offer("unknown").copy(distanceKm = -1.0),
+                offer("near").copy(distanceKm = 0.8),
+                offer("stale").copy(distanceKm = 0.5, eatByMs = now - 1),
+                offer("elsewhere").copy(distanceKm = 0.3, dropOff = true, dropOffNgoId = "another-ngo")
+            )
+        )
+        assertEquals(listOf("near", "far", "unknown"), NgoState.offersAt(now).map { it.id })
+    }
+
     @Test fun deliveriesThatDidNotComeFromTheDonorGiveNoCoins() {
         NgoState.markReceived("incoming-1", null)
         assertTrue(DonationLog.pendingCredits.isEmpty())

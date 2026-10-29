@@ -193,9 +193,10 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
     // donor's real donations show; the sample history is for the single-phone demo.
     val sampleHistory = if (Cloud.enabled) emptyList() else recentDonations
     val donations = DonationLog.submitted.toList() + sampleHistory
-    // A donation made here comes first; once it is delivered its card stays until the donor taps "Got it".
+    // A donation made here comes first; once it is delivered (or nobody collected it in time) its
+    // card stays until the donor taps "Got it".
     val activeDonation = DonationLog.submitted.firstOrNull { it.inTransit }
-        ?: DonationLog.submitted.firstOrNull { it.status == STATUS_DELIVERED && !it.acknowledged }
+        ?: DonationLog.submitted.firstOrNull { (it.status == STATUS_DELIVERED || it.status == STATUS_EXPIRED) && !it.acknowledged }
         ?: sampleHistory.firstOrNull { it.inTransit }
 
     val openDonate = { navController.goToTab(Screen.Donate.route) }
@@ -786,10 +787,19 @@ private fun rememberFoodWasteFacts(): State<FoodWasteFacts> {
 
 @Composable
 private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    val steps = listOf("Posted", "Picked up", "Delivered")
+    val now by rememberNow()
+    val steps = listOf("Posted", "Accepted", if (donation.dropOff) "On the way" else "Picked up", "Delivered")
     val delivered = donation.status == STATUS_DELIVERED
+    val expired = donation.isExpired(now)
     // Past the last step, so every dot shows a tick once the food has arrived.
     val stage = if (delivered) steps.size else donation.stage
+    // Minutes until the runner reaches the donor. The sample donation in the demo is already on its way.
+    val eta = when {
+        delivered || expired || donation.dropOff -> null
+        stage == 1 -> minutesUntilArrival(donation.acceptedAtMs, donation.etaMinutes, now)
+        stage == 2 && !Cloud.enabled -> donation.etaMinutes
+        else -> null
+    }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -811,7 +821,11 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "Delivered"
-                            stage == 0 -> "Waiting for a volunteer"
+                            expired -> "Not collected in time"
+                            stage == 0 && donation.dropOff -> "Waiting for ${donation.dropOffNgoName ?: "the NGO"} to say yes"
+                            stage == 0 -> "Waiting for an NGO"
+                            stage == 1 && donation.dropOff -> "${donation.ngo} is expecting you"
+                            stage == 1 -> "${donation.volunteer ?: "Someone"} is coming to collect it"
                             else -> "Donation on its way"
                         },
                         style = MaterialTheme.typography.labelMedium,
@@ -827,7 +841,14 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "${donation.ngo} has it. +${"%,d".format(donation.points)} coins added."
+                            expired -> "It had to be eaten by ${donation.eatByMs?.let { clockText(it, now) } ?: "now"}, so please do not give it out."
+                            stage == 0 && donation.hasNoTakers(now) && donation.dropOff -> "They have not replied yet."
+                            stage == 0 && donation.hasNoTakers(now) -> "No NGO has said yes yet. Share it, or take it to one yourself."
+                            stage == 0 && donation.dropOff -> "It shows in their offers now"
                             stage == 0 -> "Nearby NGOs can see it now"
+                            stage == 1 && donation.dropOff -> "Bring it over when you can"
+                            stage == 1 -> "From ${donation.ngo}. Have the food ready at the door."
+                            donation.dropOff -> "On its way to ${donation.ngo}"
                             else -> "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}"
                         },
                         style = MaterialTheme.typography.bodySmall,
@@ -840,11 +861,11 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Spacer(Modifier.width(8.dp))
                     DeliveredStamp()
                 }
-                donation.etaMinutes?.let { eta ->
+                eta?.let { minutes ->
                     Spacer(Modifier.width(8.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "$eta",
+                            "$minutes",
                             style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"),
                             color = TextPrimary
                         )
@@ -854,7 +875,10 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
             }
             Spacer(Modifier.height(16.dp))
             TrackerSteps(labels = steps, stage = stage)
-            if (delivered) {
+            if (!delivered && !expired) {
+                DonorDeliveryPanel(donation, now, Modifier.padding(top = 14.dp))
+            }
+            if (delivered || expired) {
                 Spacer(Modifier.height(4.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
                     Text("Got it", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
@@ -1542,15 +1566,20 @@ private fun DonationRow(item: DonationItem, showDivider: Boolean) {
 
 @Composable
 private fun StatusChip(status: String) {
-    val onTheWay = status != STATUS_DELIVERED
+    // Green once delivered, grey when it never went anywhere, amber while it is still moving.
+    val (ink, fill) = when (status) {
+        STATUS_DELIVERED -> OnPrimaryGreenContainer to PrimaryGreenLight
+        STATUS_CANCELLED, STATUS_EXPIRED -> TextSecondary to SurfaceVariantColor
+        else -> MealsTextPrimary to MealsCardBg
+    }
     Text(
         status,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
-        color = if (onTheWay) MealsTextPrimary else OnPrimaryGreenContainer,
+        color = ink,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (onTheWay) MealsCardBg else PrimaryGreenLight)
+            .background(fill)
             .padding(horizontal = 8.dp, vertical = 3.dp)
     )
 }

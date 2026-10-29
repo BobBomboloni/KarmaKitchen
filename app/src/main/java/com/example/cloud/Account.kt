@@ -12,7 +12,9 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.NGO_NAME
+import com.example.Place
 import com.example.UserProfile
+import com.example.geohash
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseNetworkException
@@ -33,7 +35,7 @@ const val ROLE_DONOR = "donor"
 const val ROLE_NGO = "ngo"
 
 internal const val USERS = "users"
-private const val NGOS = "ngos"
+internal const val NGOS = "ngos"
 
 /** The signed-in person's `users/{uid}` document, plus their NGO's details for NGO accounts. */
 data class CloudUser(
@@ -46,7 +48,10 @@ data class CloudUser(
     val coinsEarned: Int = 0,
     val coinsSpent: Int = 0,
     val ngoName: String = "",
-    val ngoVerified: Boolean = false
+    val ngoVerified: Boolean = false,
+    /** Where the NGO is, saved from its phone. Offers are measured from here. */
+    val ngoPlace: Place? = null,
+    val ngoAddress: String = ""
 )
 
 sealed interface AccountStatus {
@@ -80,7 +85,10 @@ object Account {
     private var ngoListener: ListenerRegistration? = null
     private var justCreated = false
 
+    private lateinit var appContext: Context
+
     fun start(context: Context) {
+        appContext = context.applicationContext
         auth.addAuthStateListener { onAuthChanged(it.currentUser) }
     }
 
@@ -90,6 +98,7 @@ object Account {
         if (firebaseUser == null) {
             user = null
             status = AccountStatus.SignedOut
+            KitchenPhone.stop(appContext)
             return
         }
         listen(firebaseUser)
@@ -121,13 +130,19 @@ object Account {
                 coinsEarned = snap.getLong("coinsEarned")?.toInt() ?: 0,
                 coinsSpent = snap.getLong("coinsSpent")?.toInt() ?: 0,
                 ngoName = user?.ngoName ?: "",
-                ngoVerified = user?.ngoVerified ?: false
+                ngoVerified = user?.ngoVerified ?: false,
+                ngoPlace = user?.ngoPlace,
+                ngoAddress = user?.ngoAddress ?: ""
             )
             user = loaded
             if (status !is AccountStatus.Ready) {
                 status = AccountStatus.Ready(uid, role, isNew = justCreated)
                 justCreated = false
-                if (role == ROLE_NGO) listenToNgo(uid)
+                if (role == ROLE_NGO) {
+                    listenToNgo(uid)
+                    // The kitchen phone keeps ringing for new offers if this NGO switched it on.
+                    KitchenPhone.resumeIfOn(appContext)
+                }
                 CloudSync.start(uid, role)
             }
         }
@@ -143,9 +158,39 @@ object Account {
     private fun listenToNgo(uid: String) {
         ngoListener = db.collection(NGOS).document(uid).addSnapshotListener { snap, error ->
             if (error != null || snap == null) return@addSnapshotListener
+            val lat = snap.getDouble("lat")
+            val lng = snap.getDouble("lng")
             user = user?.copy(
                 ngoName = snap.getString("name") ?: "",
-                ngoVerified = snap.getBoolean("verified") ?: false
+                ngoVerified = snap.getBoolean("verified") ?: false,
+                ngoPlace = if (lat != null && lng != null) Place(lat, lng) else null,
+                ngoAddress = snap.getString("address") ?: ""
+            )
+            // Distances to offers are measured from the NGO, so they change when its spot does.
+            CloudSync.refreshNgo()
+        }
+    }
+
+    /**
+     * Saves where the NGO is (usually this phone's position at the NGO), and its phone number so
+     * donors who drop food off can call. Throws with a readable message.
+     */
+    suspend fun saveNgoLocation(place: Place, address: String) {
+        val current = user ?: throw SignInException("You are signed out. Please sign in again.")
+        try {
+            db.collection(NGOS).document(current.uid).update(
+                mapOf(
+                    "lat" to place.lat,
+                    "lng" to place.lng,
+                    "geohash" to geohash(place),
+                    "address" to address.trim().take(300),
+                    "phone" to current.phone.trim().take(20)
+                )
+            ).await()
+        } catch (e: Exception) {
+            throw SignInException(
+                if (e is FirebaseFirestoreException) firestoreErrorMessage(e) else "Could not save the location. Please try again.",
+                e
             )
         }
     }

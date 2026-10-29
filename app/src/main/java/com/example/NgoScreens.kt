@@ -198,7 +198,7 @@ private fun SegmentedTabs(labels: List<String>, selected: Int, onSelect: (Int) -
 }
 
 @Composable
-private fun InfoChip(icon: ImageVector, text: String) {
+internal fun InfoChip(icon: ImageVector, text: String) {
     Row(
         modifier = Modifier
             .clip(CircleShape)
@@ -213,7 +213,7 @@ private fun InfoChip(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun CategoryTile(category: FoodCategory, size: Int = 52) {
+internal fun CategoryTile(category: FoodCategory, size: Int = 52) {
     Box(
         modifier = Modifier
             .size(size.dp)
@@ -241,7 +241,7 @@ private fun EmptyState(art: Int, title: String, body: String) {
 }
 
 @Composable
-private fun NgoCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun NgoCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -313,6 +313,10 @@ fun NgoDashboardScreen(navController: NavController) {
         }
 
         item { AvailabilityCard() }
+
+        if (Cloud.enabled) {
+            item { KitchenPhoneCard(Modifier.padding(horizontal = Gutter)) }
+        }
 
         item { BroadcastCard() }
 
@@ -411,14 +415,18 @@ fun NgoDashboardScreen(navController: NavController) {
                                 Column(Modifier.weight(1f)) {
                                     Text(donation.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(
-                                        "${donation.volunteer ?: "A volunteer"} is bringing it from ${donation.donor}",
+                                        when {
+                                            donation.dropOff -> "${donation.donor} is bringing it"
+                                            donation.stage == OfferStage.Accepted -> "${donation.volunteer ?: "Your runner"} is collecting it from ${donation.donor}"
+                                            else -> "${donation.volunteer ?: "A volunteer"} is bringing it from ${donation.donor}"
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = TextSecondary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
-                                donation.etaMinutes?.let { eta ->
+                                minutesUntilArrival(donation.acceptedAtMs, donation.etaMinutes, System.currentTimeMillis())?.let { eta ->
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text("$eta", style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
                                         Text("min", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -787,8 +795,12 @@ fun NgoOffersScreen(navController: NavController) {
         aiFailed = false
     }
 
-    val offers = NgoState.offers
+    // Offers drop off the list on their own once their eat-by time passes.
+    val now by rememberNow()
+    val offers = NgoState.offersAt(now)
     val onTheWay = NgoState.onTheWay
+    // The pickup being accepted, while the NGO says who is going.
+    var accepting by remember { mutableStateOf<NgoDonation?>(null) }
 
     Box(
         modifier = Modifier
@@ -811,6 +823,14 @@ fun NgoOffersScreen(navController: NavController) {
 
             if (tab == 0) {
                 val problem = CloudSync.ngoProblem
+                if (Cloud.enabled && problem == null && Account.user?.ngoPlace == null) {
+                    item(key = "where") {
+                        NgoLocationCard(
+                            onSaved = { banner = "Saved. Offers now show how far away they are." },
+                            modifier = Modifier.padding(horizontal = Gutter)
+                        )
+                    }
+                }
                 if (offers.isEmpty()) {
                     item {
                         EmptyState(
@@ -823,17 +843,18 @@ fun NgoOffersScreen(navController: NavController) {
                     items(offers, key = { it.id }) { donation ->
                         OfferCard(
                             donation = donation,
+                            now = now,
                             onAccept = {
-                                NgoState.accept(donation.id)
-                                banner = if (Cloud.enabled) {
-                                    "Accepted. ${donation.donor} has been told you are on the way."
+                                if (donation.dropOff) {
+                                    NgoState.accept(donation.id)
+                                    banner = "Accepted. ${donation.donor} will bring it to you."
                                 } else {
-                                    "Accepted. ${volunteerFor(donation.id)} will collect it from ${donation.donor}."
+                                    accepting = donation
                                 }
                             },
                             onDecline = {
                                 NgoState.decline(donation.id)
-                                banner = "Offer declined."
+                                banner = if (donation.dropOff) "Declined. Other NGOs can collect it instead." else "Offer declined."
                             },
                             modifier = Modifier.padding(horizontal = Gutter)
                         )
@@ -850,11 +871,28 @@ fun NgoOffersScreen(navController: NavController) {
                     }
                 } else {
                     items(onTheWay, key = { it.id }) { donation ->
-                        OnTheWayCard(
-                            donation = donation,
-                            onLogIntake = { startIntake(donation.id) },
-                            modifier = Modifier.padding(horizontal = Gutter)
-                        )
+                        if (donation.stage == OfferStage.Accepted) {
+                            AcceptedCard(
+                                donation = donation,
+                                now = now,
+                                onPickedUp = {
+                                    NgoState.markPickedUp(donation.id)
+                                    banner = "Picked up. ${donation.donor} can see it is on its way."
+                                },
+                                onLogIntake = { startIntake(donation.id) },
+                                onRelease = {
+                                    NgoState.release(donation.id)
+                                    banner = "Put back up, so another NGO can collect it."
+                                },
+                                modifier = Modifier.padding(horizontal = Gutter)
+                            )
+                        } else {
+                            OnTheWayCard(
+                                donation = donation,
+                                onLogIntake = { startIntake(donation.id) },
+                                modifier = Modifier.padding(horizontal = Gutter)
+                            )
+                        }
                     }
                 }
             }
@@ -936,6 +974,18 @@ fun NgoOffersScreen(navController: NavController) {
         )
     }
 
+    accepting?.let { donation ->
+        AcceptSheet(
+            donation = donation,
+            onConfirm = { runner, phone, eta ->
+                NgoState.accept(donation.id, runner, phone, eta)
+                banner = "Accepted. ${donation.donor} can see that $runner is coming."
+                accepting = null
+            },
+            onDismiss = { accepting = null }
+        )
+    }
+
     summary?.let { result ->
         val donation = NgoState.donations.firstOrNull { it.id == targetId }
         IntakeSheet(
@@ -951,7 +1001,7 @@ fun NgoOffersScreen(navController: NavController) {
 }
 
 @Composable
-private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
+private fun OfferCard(donation: NgoDonation, now: Long, onAccept: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
     NgoCard(modifier) {
         DonationPhoto(donation, height = 150.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -982,13 +1032,25 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            InfoChip(Icons.Filled.Schedule, donation.pickup)
+            InfoChip(Icons.Filled.Schedule, eatByText(donation, now) ?: donation.pickup)
+        }
+        if (donation.dropOff) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "${donation.donor} will bring it to you, so nobody has to go and collect it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = PrimaryGreen,
+                fontWeight = FontWeight.SemiBold
+            )
         }
         if (donation.note.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text("Note: ${donation.note}", style = MaterialTheme.typography.bodySmall, color = TextTertiary)
         }
-        PickupDetails(donation)
+        if (donation.address.isNotBlank() && !donation.dropOff) {
+            Spacer(Modifier.height(8.dp))
+            Text("Pickup at ${donation.address}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        }
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             KarmaOutlinedButton(
@@ -1005,20 +1067,22 @@ private fun OfferCard(donation: NgoDonation, onAccept: () -> Unit, onDecline: ()
                     .height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen, contentColor = OnPrimaryGreen)
-            ) { Text("Accept", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold) }
+            ) {
+                Text(
+                    if (donation.dropOff) "Yes, bring it" else "Accept",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
 
+/** Picked up and on its way here. */
 @Composable
 private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifier: Modifier = Modifier) {
-    val eta = donation.etaMinutes
-    // Close to the door once only a few minutes are left. Without an estimate it stays at "Accepted".
-    val stage = when {
-        eta == null -> 0
-        eta > 15 -> 1
-        else -> 2
-    }
+    // How long the trip here takes is not known, except for the demo's sample deliveries.
+    val eta = if (donation.acceptedAtMs == null) donation.etaMinutes else null
     NgoCard(modifier) {
         DonationPhoto(donation, height = 120.dp)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1027,19 +1091,19 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
             Column(Modifier.weight(1f)) {
                 Text(donation.title, style = MaterialTheme.typography.titleSmall, color = TextPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    "${donation.volunteer ?: "A volunteer"} · from ${donation.donor}",
+                    if (donation.dropOff) "${donation.donor} is bringing it" else "${donation.volunteer ?: "A volunteer"} · from ${donation.donor}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
             }
-            if (eta != null) Column(horizontalAlignment = Alignment.End) {
+            if (eta != null && !donation.dropOff) Column(horizontalAlignment = Alignment.End) {
                 Text("$eta", style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"), color = TextPrimary)
                 Text("min", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
-        PickupDetails(donation)
+        DonorContact(donation, Modifier.padding(top = 12.dp), withDirections = false)
         Spacer(Modifier.height(14.dp))
-        DeliverySteps(listOf("Accepted", "Picked up", "Arriving"), stage)
+        DeliverySteps(listOf("Accepted", "Picked up", "Received"), 1)
         Spacer(Modifier.height(14.dp))
         KarmaButton(
             onClick = onLogIntake,
@@ -1057,7 +1121,7 @@ private fun OnTheWayCard(donation: NgoDonation, onLogIntake: () -> Unit, modifie
 }
 
 @Composable
-private fun DeliverySteps(labels: List<String>, stage: Int) {
+internal fun DeliverySteps(labels: List<String>, stage: Int) {
     Row(Modifier.fillMaxWidth()) {
         labels.forEachIndexed { index, label ->
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1432,13 +1496,13 @@ fun NgoSmilesScreen(navController: NavController) {
 
 /** "1.4 km · Hotel Saffron", or just the donor when the distance is not known. */
 internal fun donationPlace(donation: NgoDonation): String = when {
-    donation.distanceKm >= 0 -> "${"%.1f".format(donation.distanceKm)} km · ${donation.donor}"
+    donation.distanceKm >= 0 -> "${distanceText(donation.distanceKm)} · ${donation.donor}"
     else -> donation.donor
 }
 
 /** The donor's photo of the food, when there is one: a file on this phone or the copy in the cloud. */
 @Composable
-private fun DonationPhoto(donation: NgoDonation, height: Dp) {
+internal fun DonationPhoto(donation: NgoDonation, height: Dp) {
     val cloudPhoto by produceState(CloudPhotos.cached(donation.id), donation.id, donation.hasCloudPhoto) {
         value = if (donation.photo == null && donation.hasCloudPhoto) CloudPhotos.foodPhoto(donation.id) else null
     }
@@ -1453,29 +1517,4 @@ private fun DonationPhoto(donation: NgoDonation, height: Dp) {
             .clip(RoundedCornerShape(12.dp))
     )
     Spacer(Modifier.height(12.dp))
-}
-
-/** Where to collect a donation from the cloud, and a tap-to-call number for the donor. */
-@Composable
-private fun PickupDetails(donation: NgoDonation) {
-    if (donation.address.isBlank() && donation.donorPhone.isBlank()) return
-    val context = LocalContext.current
-    Spacer(Modifier.height(10.dp))
-    if (donation.address.isNotBlank()) {
-        Text("Pickup at ${donation.address}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-    }
-    if (donation.donorPhone.isNotBlank()) {
-        Text(
-            "Call ${donation.donor}: ${donation.donorPhone}",
-            style = MaterialTheme.typography.bodySmall,
-            color = PrimaryGreen,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .clickable {
-                    val dial = android.content.Intent(android.content.Intent.ACTION_DIAL, Uri.parse("tel:${donation.donorPhone}"))
-                    runCatching { context.startActivity(dial) }
-                }
-        )
-    }
 }

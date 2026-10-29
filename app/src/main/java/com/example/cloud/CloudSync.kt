@@ -6,9 +6,13 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.DELIVERY_DROP_OFF
+import com.example.DELIVERY_PICKUP
 import com.example.DonationLog
 import com.example.IntakeSummary
 import com.example.NgoState
+import com.example.Place
+import com.example.placeOfAddress
 import com.example.SmileEntry
 import com.example.SmileStore
 import com.example.Voucher
@@ -26,11 +30,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val SMILES = "smiles"
 private const val VOUCHERS = "vouchers"
+
+/** Phone numbers live here, so only the donor and the NGO that accepted can read them. */
+private const val PRIVATE = "private"
+private const val DONOR_CONTACT = "donor"
+private const val RUNNER_CONTACT = "runner"
+
+/** A verified NGO a donor can bring food to. */
+data class NgoInfo(
+    val id: String,
+    val name: String,
+    val address: String = "",
+    val phone: String = "",
+    val place: Place? = null
+)
 
 /**
  * Keeps [DonationLog] (the donor's side) and [NgoState] (the NGO's side) in step with the
@@ -141,16 +160,26 @@ object CloudSync {
 
     private fun publishNgo() {
         val now = System.currentTimeMillis()
-        val all = (accepted + offers).distinctBy { it.id }.sortedByDescending { it.createdAtMs }
-        NgoState.replaceDonations(all.map { it.toNgoDonation(now) })
+        val here = Account.user?.ngoPlace
+        val all = (accepted + offers).distinctBy { it.id }
+            .filter { it.status != STATE_CANCELLED }
+            .sortedByDescending { it.createdAtMs }
+        NgoState.replaceDonations(all.map { it.toNgoDonation(now, here = here) })
+    }
+
+    /** Shows the NGO's lists again, for example after it saved where it is. */
+    fun refreshNgo() {
+        if (offers.isNotEmpty() || accepted.isNotEmpty()) publishNgo()
     }
 
     /**
      * The donor posts a donation, with a small copy of their [photo] of the food when there is one.
-     * Firestore shows it straight away and sends it when online.
+     * With [lookUpAddress], the pickup spot is found from the typed address first. Firestore shows it
+     * straight away and sends it when online.
      */
-    fun postDonation(doc: DonationDoc, photo: Uri?) {
+    fun postDonation(doc: DonationDoc, photo: Uri?, lookUpAddress: Boolean = false) {
         scope.launch {
+            val place = if (lookUpAddress) placeOfAddress(appContext, doc.address) else doc.place
             val jpeg = photo?.let { uri ->
                 try {
                     cloudJpeg(appContext, uri)
@@ -163,11 +192,14 @@ object CloudSync {
             val batch = db.batch()
             batch.set(
                 ref,
-                doc.copy(hasPhoto = jpeg != null).toCreateMap() + mapOf(
+                doc.copy(hasPhoto = jpeg != null, place = place).toCreateMap() + mapOf(
                     "createdAt" to FieldValue.serverTimestamp(),
                     "updatedAt" to FieldValue.serverTimestamp()
                 )
             )
+            if (doc.donorPhone.isNotBlank()) {
+                batch.set(ref.collection(PRIVATE).document(DONOR_CONTACT), mapOf("phone" to doc.donorPhone.trim().take(20)))
+            }
             if (jpeg != null) {
                 CloudPhotos.remember(doc.id, jpeg)
                 batch.set(
@@ -179,20 +211,108 @@ object CloudSync {
         }
     }
 
-    /** The NGO accepts an offer and will collect it. */
-    fun accept(id: String, ngoName: String, etaMinutes: Int?) {
+    /**
+     * The NGO accepts an offer. For a pickup, [runner] is who it sends, with [runnerPhone] for the
+     * donor (kept in the private document) and [etaMinutes] until they arrive.
+     */
+    fun accept(id: String, ngoName: String, runner: String?, runnerPhone: String, etaMinutes: Int?) {
         val uid = Account.user?.uid ?: return
-        db.collection(DONATIONS).document(id).update(
+        val ref = db.collection(DONATIONS).document(id)
+        val batch = db.batch()
+        batch.update(
+            ref,
             mapOf(
-                "status" to STATE_ON_THE_WAY,
+                "status" to STATE_ACCEPTED,
                 "ngoId" to uid,
                 "ngoName" to ngoName,
-                "volunteer" to ngoName,
+                "volunteer" to runner,
                 "etaMinutes" to etaMinutes,
                 "acceptedAt" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp()
             )
-        ).addOnFailureListener { Log.e("CloudSync", "Could not accept donation $id", it) }
+        )
+        if (runnerPhone.isNotBlank()) {
+            batch.set(ref.collection(PRIVATE).document(RUNNER_CONTACT), mapOf("phone" to runnerPhone.take(20)))
+        }
+        batch.commit().addOnFailureListener { Log.e("CloudSync", "Could not accept donation $id", it) }
+    }
+
+    /** The runner (or the donor) says the food has been handed over. */
+    fun markPickedUp(id: String) {
+        update(id, "mark picked up", "status" to STATE_ON_THE_WAY, "pickedUpAt" to FieldValue.serverTimestamp())
+    }
+
+    /** The accepting NGO or the donor puts the food back up for every NGO, before it is picked up. */
+    fun release(id: String) {
+        update(
+            id, "put back up",
+            "status" to STATE_OFFERED,
+            "ngoId" to null,
+            "ngoName" to null,
+            "volunteer" to null,
+            "etaMinutes" to null,
+            "acceptedAt" to null
+        )
+    }
+
+    /** The donor withdraws the food before it is picked up. */
+    fun cancel(id: String) {
+        update(id, "cancel", "status" to STATE_CANCELLED, "cancelledAt" to FieldValue.serverTimestamp())
+    }
+
+    /** The donor will bring it to [ngo] themselves, or with null, lets any NGO collect it again. */
+    fun switchDelivery(id: String, ngo: NgoInfo?) {
+        update(
+            id, "change the delivery",
+            "deliveryType" to (if (ngo != null) DELIVERY_DROP_OFF else DELIVERY_PICKUP),
+            "dropOffNgoId" to ngo?.id,
+            "dropOffNgoName" to ngo?.name
+        )
+    }
+
+    /** The NGO a donor wanted to drop food at cannot take it, so every NGO may collect it instead. */
+    fun declineDropOff(id: String) {
+        update(id, "decline the drop-off", "deliveryType" to DELIVERY_PICKUP, "dropOffNgoId" to null, "dropOffNgoName" to null)
+    }
+
+    private fun update(id: String, what: String, vararg fields: Pair<String, Any?>) {
+        db.collection(DONATIONS).document(id)
+            .update(mapOf(*fields) + ("updatedAt" to FieldValue.serverTimestamp()))
+            .addOnFailureListener { Log.e("CloudSync", "Could not $what donation $id", it) }
+    }
+
+    /**
+     * The donor's number, for the NGO that accepted. Donations from before the private documents
+     * still carry it on the donation itself.
+     */
+    suspend fun donorPhone(id: String): String? =
+        contactPhone(id, DONOR_CONTACT) ?: accepted.firstOrNull { it.id == id }?.donorPhone?.ifBlank { null }
+
+    /** The number of the runner the NGO sent, for the donor. */
+    suspend fun runnerPhone(id: String): String? = contactPhone(id, RUNNER_CONTACT)
+
+    private suspend fun contactPhone(id: String, who: String): String? = try {
+        db.collection(DONATIONS).document(id).collection(PRIVATE).document(who).get().await()
+            .getString("phone")?.ifBlank { null }
+    } catch (e: Exception) {
+        Log.w("CloudSync", "Could not read the $who contact for $id", e)
+        null
+    }
+
+    /** Verified NGOs, for a donor choosing where to drop food off. Empty when they cannot be loaded. */
+    suspend fun verifiedNgos(): List<NgoInfo> = try {
+        db.collection(NGOS).whereEqualTo("verified", true).get().await().documents.map { it.toNgoInfo() }
+    } catch (e: Exception) {
+        Log.w("CloudSync", "Could not load the NGO list", e)
+        emptyList()
+    }
+
+    /** One NGO's public details: name, address, phone and where it is. */
+    suspend fun ngoInfo(id: String): NgoInfo? = try {
+        db.collection(NGOS).document(id).get().await().takeIf { it.exists() }?.toNgoInfo()
+    } catch (e: Exception) {
+        Log.w("CloudSync", "Could not load NGO $id", e)
+        null
     }
 
     /**
@@ -227,7 +347,7 @@ object CloudSync {
         )
         batch.update(
             db.collection(USERS).document(donation.donorId),
-            mapOf("coinsEarned" to FieldValue.increment(donation.coins.toLong()), "lastCreditFor" to id)
+            mapOf("coinsEarned" to FieldValue.increment(donation.totalCoins.toLong()), "lastCreditFor" to id)
         )
         batch.commit().addOnFailureListener { Log.e("CloudSync", "Could not mark donation $id received", it) }
     }
@@ -323,6 +443,18 @@ private fun DocumentSnapshot.toDonationDoc(): DonationDoc? {
     val raw = getData(DocumentSnapshot.ServerTimestampBehavior.ESTIMATE) ?: return null
     val plain = raw.mapValues { (_, value) -> if (value is Timestamp) value.toDate().time else value }
     return DonationDoc.fromMap(id, plain)
+}
+
+private fun DocumentSnapshot.toNgoInfo(): NgoInfo {
+    val lat = getDouble("lat")
+    val lng = getDouble("lng")
+    return NgoInfo(
+        id = id,
+        name = getString("name")?.ifBlank { null } ?: "An NGO",
+        address = getString("address") ?: "",
+        phone = getString("phone") ?: "",
+        place = if (lat != null && lng != null) Place(lat, lng) else null
+    )
 }
 
 private fun DocumentSnapshot.toVoucher(): Voucher? {
