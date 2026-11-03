@@ -3,6 +3,7 @@ package com.example.cloud
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -207,7 +208,7 @@ object CloudSync {
                     mapOf("jpeg" to Blob.fromBytes(jpeg), "createdAt" to FieldValue.serverTimestamp())
                 )
             }
-            batch.commit().addOnFailureListener { Log.e("CloudSync", "Could not post donation ${doc.id}", it) }
+            batch.commit().addOnFailureListener { refused("post the donation", doc.id, it) }
         }
     }
 
@@ -234,18 +235,18 @@ object CloudSync {
         if (runnerPhone.isNotBlank()) {
             batch.set(ref.collection(PRIVATE).document(RUNNER_CONTACT), mapOf("phone" to runnerPhone.take(20)))
         }
-        batch.commit().addOnFailureListener { Log.e("CloudSync", "Could not accept donation $id", it) }
+        batch.commit().addOnFailureListener { refused("accept the donation", id, it) }
     }
 
     /** The runner (or the donor) says the food has been handed over. */
     fun markPickedUp(id: String) {
-        update(id, "mark picked up", "status" to STATE_ON_THE_WAY, "pickedUpAt" to FieldValue.serverTimestamp())
+        update(id, "mark it picked up", "status" to STATE_ON_THE_WAY, "pickedUpAt" to FieldValue.serverTimestamp())
     }
 
     /** The accepting NGO or the donor puts the food back up for every NGO, before it is picked up. */
     fun release(id: String) {
         update(
-            id, "put back up",
+            id, "put it back up",
             "status" to STATE_OFFERED,
             "ngoId" to null,
             "ngoName" to null,
@@ -257,13 +258,13 @@ object CloudSync {
 
     /** The donor withdraws the food before it is picked up. */
     fun cancel(id: String) {
-        update(id, "cancel", "status" to STATE_CANCELLED, "cancelledAt" to FieldValue.serverTimestamp())
+        update(id, "cancel it", "status" to STATE_CANCELLED, "cancelledAt" to FieldValue.serverTimestamp())
     }
 
     /** The donor will bring it to [ngo] themselves, or with null, lets any NGO collect it again. */
     fun switchDelivery(id: String, ngo: NgoInfo?) {
         update(
-            id, "change the delivery",
+            id, "change how it gets there",
             "deliveryType" to (if (ngo != null) DELIVERY_DROP_OFF else DELIVERY_PICKUP),
             "dropOffNgoId" to ngo?.id,
             "dropOffNgoName" to ngo?.name
@@ -275,10 +276,25 @@ object CloudSync {
         update(id, "decline the drop-off", "deliveryType" to DELIVERY_PICKUP, "dropOffNgoId" to null, "dropOffNgoName" to null)
     }
 
+    /**
+     * Firebase turned down a change to donation [id], so the screen would otherwise show a step the
+     * other phone never sees. Says so on screen. Offline changes wait instead of failing, so this is
+     * almost always the security rules.
+     */
+    private fun refused(what: String, id: String, e: Exception) {
+        Log.e("CloudSync", "Could not $what ($id)", e)
+        val message = if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+            "Could not $what: Firebase refused it. If the app was just updated, publish the new firestore.rules in the Firebase console."
+        } else {
+            "Could not $what. Please try again."
+        }
+        Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun update(id: String, what: String, vararg fields: Pair<String, Any?>) {
         db.collection(DONATIONS).document(id)
             .update(mapOf(*fields) + ("updatedAt" to FieldValue.serverTimestamp()))
-            .addOnFailureListener { Log.e("CloudSync", "Could not $what donation $id", it) }
+            .addOnFailureListener { refused(what, id, it) }
     }
 
     /**
@@ -349,7 +365,7 @@ object CloudSync {
             db.collection(USERS).document(donation.donorId),
             mapOf("coinsEarned" to FieldValue.increment(donation.totalCoins.toLong()), "lastCreditFor" to id)
         )
-        batch.commit().addOnFailureListener { Log.e("CloudSync", "Could not mark donation $id received", it) }
+        batch.commit().addOnFailureListener { refused("mark it received", id, it) }
     }
 
     /**
