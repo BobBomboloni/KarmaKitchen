@@ -1,9 +1,6 @@
 package com.example
 
 import android.Manifest
-import android.content.Context
-import android.location.Geocoder
-import android.location.Location
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -120,6 +117,7 @@ import com.example.cloud.Account
 import com.example.cloud.Cloud
 import com.example.cloud.CloudSync
 import com.example.cloud.DonationDoc
+import com.example.cloud.NgoInfo
 import com.example.api.uriToBase64
 import com.example.ui.DonationChatbot
 import com.example.ui.ScannerAnimation
@@ -148,12 +146,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import java.util.Locale
 
 /** When the donor would like the food collected. */
 enum class PickupWindow(val label: String, val hint: String) {
@@ -181,8 +175,15 @@ private class DonationDraft {
     var note by mutableStateOf("")
     var address by mutableStateOf("")
     var addressEdited by mutableStateOf(false)
+    /** Where the phone was when the pickup step opened, or null when it is not known. */
+    var place by mutableStateOf<Place?>(null)
+    /** The NGO the donor will bring it to, or null to have an NGO collect it. */
+    var dropOffNgo by mutableStateOf<NgoInfo?>(null)
 
     val coins: Int get() = calculateKarmaPoints(servings, quality)
+
+    /** What the donor earns: a bonus for bringing it themselves. */
+    val totalCoins: Int get() = coins + if (dropOffNgo != null) DROP_OFF_BONUS else 0
 
     fun clearScan() {
         photo = null
@@ -203,24 +204,8 @@ private class DonationDraft {
         note = ""
         address = ""
         addressEdited = false
-    }
-}
-
-private suspend fun resolveAddress(context: Context, fallback: String): String {
-    return try {
-        val client = LocationServices.getFusedLocationProviderClient(context)
-        @Suppress("MissingPermission")
-        val location: Location? = client.lastLocation.await()
-        if (location != null) {
-            val addresses = Geocoder(context, Locale.getDefault()).getFromLocation(location.latitude, location.longitude, 1)
-            addresses?.firstOrNull()?.getAddressLine(0) ?: "${location.latitude}, ${location.longitude}"
-        } else {
-            fallback
-        }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        fallback
+        place = null
+        dropOffNgo = null
     }
 }
 
@@ -242,6 +227,8 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
     var step by remember { mutableStateOf(1) }
     var showCamera by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
+    // Verified NGOs the donor could bring the food to (only with an account).
+    var ngoChoices by remember { mutableStateOf<List<NgoInfo>>(emptyList()) }
 
     // Fill in the pickup address from the phone's location when the pickup step opens.
     LaunchedEffect(step, locationPermissions.allPermissionsGranted) {
@@ -250,10 +237,16 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                 locationPermissions.launchMultiplePermissionRequest()
             } else {
                 locating = true
-                draft.address = resolveAddress(context, userProfile.address)
+                val place = phonePlace(context)
+                draft.place = place
+                val found = place?.let { addressOf(context, it) ?: "${it.lat}, ${it.lng}" }
+                if (!draft.addressEdited) draft.address = found ?: userProfile.address
                 locating = false
             }
         }
+    }
+    LaunchedEffect(step) {
+        if (step == 3 && Cloud.enabled && ngoChoices.isEmpty()) ngoChoices = CloudSync.verifiedNgos()
     }
 
     fun analyzeUri(uri: Uri) {
@@ -360,13 +353,17 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                 else -> PickupStep(
                     draft = draft,
                     locating = locating,
+                    ngos = ngoChoices,
                     onBack = { step = 2 },
                     onConfirm = {
                         val id = java.util.UUID.randomUUID().toString()
                         val category = guessCategory(draft.title)
                         val donor = Account.user
                         if (Cloud.enabled && donor != null) {
-                            // Every NGO sees it as a new offer, with the photo; the donor's home follows it from the cloud.
+                            // Every NGO sees it as a new offer (or just the chosen one, for a drop-off), with the
+                            // photo; the donor's home follows it from the cloud. A typed address may be somewhere
+                            // other than the phone, so its spot is looked up from the text instead.
+                            val dropOff = draft.dropOffNgo
                             CloudSync.postDonation(
                                 DonationDoc(
                                     id = id,
@@ -382,9 +379,15 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                                     coins = draft.coins,
                                     pickupWindow = draft.window.label,
                                     note = draft.note.trim(),
-                                    address = draft.address.trim()
+                                    address = draft.address.trim(),
+                                    place = draft.place,
+                                    eatByMs = eatByFor(draft.shelfLife, System.currentTimeMillis()),
+                                    deliveryType = if (dropOff != null) DELIVERY_DROP_OFF else DELIVERY_PICKUP,
+                                    dropOffNgoId = dropOff?.id,
+                                    dropOffNgoName = dropOff?.name
                                 ),
-                                photo = draft.photo
+                                photo = draft.photo,
+                                lookUpAddress = draft.addressEdited || draft.place == null
                             )
                             step = 4
                             return@PickupStep
@@ -1404,7 +1407,13 @@ private fun OptionRow(selected: Boolean, title: String, subtitle: String, onClic
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun PickupStep(draft: DonationDraft, locating: Boolean, onBack: () -> Unit, onConfirm: () -> Unit) {
+private fun PickupStep(
+    draft: DonationDraft,
+    locating: Boolean,
+    ngos: List<NgoInfo>,
+    onBack: () -> Unit,
+    onConfirm: () -> Unit
+) {
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
@@ -1470,6 +1479,10 @@ private fun PickupStep(draft: DonationDraft, locating: Boolean, onBack: () -> Un
                 }
             }
 
+            if (ngos.isNotEmpty()) {
+                item { DeliveryChoice(draft, ngos) }
+            }
+
             item { DonationSummary(draft) }
 
             item { CoinsCard(draft) }
@@ -1478,11 +1491,65 @@ private fun PickupStep(draft: DonationDraft, locating: Boolean, onBack: () -> Un
         ActionBar {
             SecondaryAction("Back", onBack, Modifier.weight(1f))
             PrimaryAction(
-                text = "Confirm pickup",
+                text = if (draft.dropOffNgo != null) "Confirm drop-off" else "Confirm pickup",
                 onClick = onConfirm,
                 modifier = Modifier.weight(2f),
                 enabled = draft.address.isNotBlank()
             )
+        }
+    }
+}
+
+/** Whether an NGO collects the food or the donor brings it to one of the nearest NGOs. */
+@Composable
+private fun DeliveryChoice(draft: DonationDraft, ngos: List<NgoInfo>) {
+    val here = draft.place
+    val nearest = remember(ngos, here) {
+        ngos.map { ngo -> ngo to if (here != null && ngo.place != null) distanceKm(here, ngo.place) else -1.0 }
+            .sortedBy { (_, km) -> if (km < 0) Double.MAX_VALUE else km }
+            .take(3)
+    }
+    val small = servingsCount(draft.servings) <= DROP_OFF_SUGGESTED_SERVINGS
+    FormSection("How will it reach the NGO?") {
+        OptionRow(
+            selected = draft.dropOffNgo == null,
+            title = "An NGO collects it",
+            subtitle = "The NGO that accepts sends someone to this address",
+            onClick = { draft.dropOffNgo = null }
+        )
+        OptionRow(
+            selected = draft.dropOffNgo != null,
+            title = "I'll drop it off",
+            subtitle = if (small) {
+                "A small amount? Bringing it saves an NGO a trip, and earns $DROP_OFF_BONUS bonus coins"
+            } else {
+                "Earn $DROP_OFF_BONUS bonus coins for bringing it yourself"
+            },
+            onClick = { if (draft.dropOffNgo == null) draft.dropOffNgo = nearest.firstOrNull()?.first }
+        )
+        AnimatedVisibility(
+            visible = draft.dropOffNgo != null,
+            enter = expandVertically(tween(250)) + fadeIn(tween(250)),
+            exit = shrinkVertically(tween(200)) + fadeOut(tween(150))
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Bring it to one of the nearest NGOs. They say yes first, so you will not make a wasted trip.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+                nearest.forEach { (ngo, km) ->
+                    OptionRow(
+                        selected = draft.dropOffNgo?.id == ngo.id,
+                        title = ngo.name,
+                        subtitle = listOfNotNull(
+                            if (km >= 0) "${distanceText(km)} away" else null,
+                            ngo.address.ifBlank { null }
+                        ).joinToString(" · ").ifBlank { "Distance not known yet" },
+                        onClick = { draft.dropOffNgo = ngo }
+                    )
+                }
+            }
         }
     }
 }
@@ -1552,13 +1619,14 @@ private fun CoinsCard(draft: DonationDraft) {
         Column(Modifier.weight(1f)) {
             Text("You will earn", style = MaterialTheme.typography.labelMedium, color = MealsTextPrimary)
             Text(
-                text = "+${draft.coins}",
+                text = "+${draft.totalCoins}",
                 style = MaterialTheme.typography.headlineMedium.copy(fontFeatureSettings = "tnum"),
                 color = TextPrimary,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "$counted servings × $perServing coins each. They unlock when the NGO confirms it received the food.",
+                (if (draft.dropOffNgo != null) "$counted servings × $perServing coins each, plus $DROP_OFF_BONUS for dropping it off. " else "$counted servings × $perServing coins each. ") +
+                    "They unlock when the NGO confirms it received the food.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextPrimary.copy(alpha = 0.8f)
             )
@@ -1601,8 +1669,10 @@ private fun DonationSuccess(draft: DonationDraft, onHome: () -> Unit, onAnother:
         Spacer(Modifier.height(16.dp))
         Text("Donation scheduled", style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
         Spacer(Modifier.height(6.dp))
+        val food = draft.title.trim().ifBlank { "food" }
+        val dropOff = draft.dropOffNgo
         Text(
-            "Nearby NGOs can see your ${draft.title.trim().ifBlank { "food" }} now.",
+            if (dropOff != null) "${dropOff.name} can see your $food now. Bring it once they say yes." else "Nearby NGOs can see your $food now.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -1616,7 +1686,7 @@ private fun DonationSuccess(draft: DonationDraft, onHome: () -> Unit, onAnother:
             verticalAlignment = Alignment.CenterVertically
         ) {
             KarmaAmount(
-                amount = "+${draft.coins} reserved",
+                amount = "+${draft.totalCoins} reserved",
                 style = MaterialTheme.typography.titleMedium,
                 color = MealsTextPrimary,
                 fontWeight = FontWeight.SemiBold
@@ -1633,8 +1703,13 @@ private fun DonationSuccess(draft: DonationDraft, onHome: () -> Unit, onAnother:
         ) {
             Text("What happens next", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
             Spacer(Modifier.height(12.dp))
-            TimelineRow("An NGO accepts it", "Usually within a few minutes", first = true, last = false, current = true)
-            TimelineRow("A volunteer picks it up", draft.window.hint, first = false, last = false, current = false)
+            if (dropOff != null) {
+                TimelineRow("${dropOff.name} says yes", "You will see it on your home screen", first = true, last = false, current = true)
+                TimelineRow("You drop it off", dropOff.address.ifBlank { "Directions are on your home screen" }, first = false, last = false, current = false)
+            } else {
+                TimelineRow("An NGO accepts it", "Usually within a few minutes", first = true, last = false, current = true)
+                TimelineRow("Their volunteer picks it up", draft.window.hint, first = false, last = false, current = false)
+            }
             TimelineRow("Your coins unlock", "As soon as the NGO confirms it received the food", first = false, last = true, current = false)
         }
 

@@ -71,3 +71,16 @@ fun saveCachedFacts(context: Context, f: FoodWasteFacts) {
         .putString("facts_msg", f.positiveMessage)
         .apply()
 }
+
+/** The runner an NGO sent last time (name and phone), so the accept form starts filled in. */
+fun loadRunner(context: Context): Pair<String, String> {
+    val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    return (p.getString("runner_name", "") ?: "") to (p.getString("runner_phone", "") ?: "")
+}
+
+fun saveRunner(context: Context, name: String, phone: String) {
+    context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        .putString("runner_name", name)
+        .putString("runner_phone", phone)
+        .apply()
+}
