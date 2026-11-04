@@ -38,7 +38,13 @@ class PaletteContrastTest {
             "button text on red" to (palette.onDanger to palette.danger),
             "text on red container" to (palette.onDangerContainer to palette.dangerContainer),
             "blue on card" to (palette.info to palette.surface),
-            "text on blue container" to (palette.onInfoContainer to palette.infoContainer)
+            "text on blue container" to (palette.onInfoContainer to palette.infoContainer),
+            "text on maroon" to (palette.onBrand to palette.brand),
+            "text on maroon container" to (palette.onBrandContainer to palette.brandContainer),
+            "maroon text on card" to (palette.brandInk to palette.surface),
+            "maroon text on background" to (palette.brandInk to palette.background),
+            "wordmark Karma on background" to (palette.wordmarkKarma to palette.background),
+            "wordmark Kitchen on background" to (palette.wordmarkKitchen to palette.background)
         )
         text.forEach { (label, pair) ->
             val ratio = contrast(pair.first, pair.second)

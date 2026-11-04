@@ -9,6 +9,10 @@ import androidx.compose.ui.graphics.Color
 // -----------------------------------------------------------------------------
 // KarmaKitchen palette
 //
+// The brand colours come from the logo: maroon (the "Karma" half, with the half-Hindi K) and olive
+// green (the "Kitchen" half). Green is the main accent for buttons and links; maroon marks the
+// brand moments (the startup animation, the Donate button, the main banner, the receiver role).
+//
 // There are two palettes: a warm light one (the default) and a green-tinted dark one. The names
 // below (TextPrimary, SurfaceColor, PrimaryGreen ...) are read from whichever palette the theme
 // provides, so screens never mention light or dark. Pairs that are used together (for example
@@ -54,7 +58,16 @@ class AppPalette(
     val nonVeg: Color,
     val nonVegContainer: Color,
     val gold: Color,
-    val karmaCardBg: Color
+    val karmaCardBg: Color,
+    // Logo maroon: `brand` fills (with `onBrand` text), `brandContainer` tints, `brandInk` for text
+    val brand: Color,
+    val onBrand: Color,
+    val brandContainer: Color,
+    val onBrandContainer: Color,
+    val brandInk: Color,
+    // The two halves of the wordmark
+    val wordmarkKarma: Color,
+    val wordmarkKitchen: Color
 )
 
 /** Green-tinted dark palette. */
@@ -69,10 +82,10 @@ val DarkPalette = AppPalette(
     textPrimary = Color(0xFFEEF3EE),
     textSecondary = Color(0xFFAEBBB1),
     textTertiary = Color(0xFF93A298),
-    primary = Color(0xFF7DC87A),
-    onPrimary = Color(0xFF0A2A10),
-    primaryContainer = Color(0xFF1F4A2A),
-    onPrimaryContainer = Color(0xFFC9F0CB),
+    primary = Color(0xFFB7CC6E),
+    onPrimary = Color(0xFF1F2A05),
+    primaryContainer = Color(0xFF34401A),
+    onPrimaryContainer = Color(0xFFE2EDBF),
     amber = Color(0xFFFFB347),
     onAmber = Color(0xFF3B2300),
     amberText = Color(0xFFFFB347),
@@ -88,7 +101,14 @@ val DarkPalette = AppPalette(
     nonVeg = Color(0xFFFF8A65),
     nonVegContainer = Color(0xFF3B2218),
     gold = Color(0xFFF2C14E),
-    karmaCardBg = Color(0xFF183524)
+    karmaCardBg = Color(0xFF2A3318),
+    brand = Color(0xFF8E1B2A),
+    onBrand = Color(0xFFFCF7F2),
+    brandContainer = Color(0xFF3A1A1E),
+    onBrandContainer = Color(0xFFF6D6DA),
+    brandInk = Color(0xFFF2B8BE),
+    wordmarkKarma = Color(0xFFFCF7F2),
+    wordmarkKitchen = Color(0xFFB7CC6E)
 )
 
 /** Warm paper background, white cards, leaf green and turmeric. The default. */
@@ -103,10 +123,10 @@ val LightPalette = AppPalette(
     textPrimary = Color(0xFF2A2118),
     textSecondary = Color(0xFF5A5042),
     textTertiary = Color(0xFF716656),
-    primary = Color(0xFF1A6B35),
+    primary = Color(0xFF5C7616),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFDCEBD3),
-    onPrimaryContainer = Color(0xFF15502A),
+    primaryContainer = Color(0xFFEEF2DE),
+    onPrimaryContainer = Color(0xFF3B4C0C),
     amber = Color(0xFFF2A20F),
     onAmber = Color(0xFF3A2200),
     amberText = Color(0xFF885000),
@@ -122,7 +142,14 @@ val LightPalette = AppPalette(
     nonVeg = Color(0xFFB8420F),
     nonVegContainer = Color(0xFFFCE6DA),
     gold = Color(0xFFD99A00),
-    karmaCardBg = Color(0xFFE3F0DC)
+    karmaCardBg = Color(0xFFEBEFD9),
+    brand = Color(0xFF7A0F1C),
+    onBrand = Color(0xFFFCF7F2),
+    brandContainer = Color(0xFFF5E1DF),
+    onBrandContainer = Color(0xFF5C0A15),
+    brandInk = Color(0xFF7A0F1C),
+    wordmarkKarma = Color(0xFF7A0F1C),
+    wordmarkKitchen = Color(0xFF5C7616)
 )
 
 val LocalPalette = staticCompositionLocalOf { LightPalette }
@@ -135,6 +162,11 @@ val OnPrimaryGreenContainer: Color @Composable @ReadOnlyComposable get() = Local
 val SecondaryAmber: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.amber          // fills: buttons, bars, switches
 val OnSecondaryAmber: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.onAmber
 val AmberText: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.amberText           // amber used as text or a small icon
+val BrandMaroon: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.brand              // logo maroon fills
+val OnBrandMaroon: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.onBrand          // cream text/icons on BrandMaroon
+val BrandMaroonContainer: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.brandContainer
+val OnBrandMaroonContainer: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.onBrandContainer
+val BrandMaroonInk: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.brandInk       // maroon used as text or a small icon
 
 // Neutrals
 val BackgroundColor: Color @Composable @ReadOnlyComposable get() = LocalPalette.current.background    // screens

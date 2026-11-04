@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12 and newer show a system splash screen first. Make it plain logo maroon, with no
+         icon, so it flows straight into the startup animation (which starts on maroon too). -->
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.Light.NoActionBar">
+        <item name="android:windowBackground">@color/brand_maroon</item>
+        <item name="android:colorBackground">@color/app_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_maroon</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+</resources>
