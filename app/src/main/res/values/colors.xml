@@ -3,6 +3,8 @@
     <!-- Used by the window background so there is no dark flash before Compose draws the light screens. -->
     <color name="app_background">#FFF6F0E3</color>
     <color name="brand_green">#FF7DC87A</color>
+    <!-- Logo maroon: the launch screen and the app icon background. -->
+    <color name="brand_maroon">#FF7A0F1C</color>
     <color name="brand_amber">#FFFFB347</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

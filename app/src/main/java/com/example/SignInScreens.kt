@@ -56,7 +56,7 @@ import com.example.ui.theme.OnDangerContainer
 import com.example.ui.theme.OnPrimaryGreen
 import com.example.ui.theme.OutlineColor
 import com.example.ui.theme.PrimaryGreen
-import com.example.ui.theme.SecondaryAmber
+import com.example.ui.theme.BrandMaroon
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -150,8 +150,9 @@ fun SignInScreen() {
 
     GateColumn {
         Spacer(Modifier.height(24.dp))
-        AnimatedKarmaLogo(size = 112.dp)
-        KarmaKitchenLogoText(fontSize = 36.sp, textColor = TextPrimary, accentColor = PrimaryGreen)
+        AnimatedKarmaLogo(size = 96.dp)
+        Spacer(Modifier.height(4.dp))
+        KarmaKitchenWordmark(height = 56.dp)
         Spacer(Modifier.height(8.dp))
         Text(
             if (creating) "Create your account" else "Sign in to share and receive food",
@@ -266,7 +267,7 @@ fun ChooseRoleScreen(status: AccountStatus.NeedsRole) {
                 title = "I'm receiving food",
                 subtitle = "For NGOs, shelters and community kitchens",
                 art = R.drawable.illus_role_ngo,
-                tint = SecondaryAmber,
+                tint = BrandMaroon,
                 onClick = { role = ROLE_NGO }
             )
             Spacer(Modifier.height(20.dp))
