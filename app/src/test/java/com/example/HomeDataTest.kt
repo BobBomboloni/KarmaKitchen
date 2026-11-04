@@ -1,5 +1,6 @@
 package com.example
 
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -87,5 +88,27 @@ class HomeDataTest {
         val posted = DonationItem("Dal khichdi", "Nearby NGOs", "Just now", STATUS_POSTED, 200, FoodCategory.Meals, stage = 0)
         assertTrue(posted.inTransit)
         assertTrue(!posted.copy(status = STATUS_DELIVERED).inTransit)
+    }
+
+    @Test fun namesShowWithCapitals() {
+        assertEquals("Shamikh", displayName("shamikh"))
+        assertEquals("Shamikh Chasmawala", displayName("  shamikh   chasmawala "))
+        assertEquals("", displayName("   "))
+    }
+
+    @Test fun demoDatesCountBackFromToday() {
+        // 4 Nov 2026, 3:00 PM local time.
+        val now = java.util.Calendar.getInstance().apply { set(2026, java.util.Calendar.NOVEMBER, 4, 15, 0, 0) }.timeInMillis
+        assertEquals("Today, 2:35 PM", demoDate(0, minutesAgo = 25, now = now))
+        assertEquals("Yesterday, 7:45 PM", demoDate(1, 19, 45, now = now))
+        assertEquals("31 Oct", demoDate(4, 13, 10, now = now))
+    }
+
+    @Test fun aiErrorsAreExplainedInPlainWords() {
+        assertTrue(com.example.api.friendlyAiError(java.net.UnknownHostException()).startsWith("No internet"))
+        val busy = retrofit2.HttpException(
+            retrofit2.Response.error<Any>(503, "".toResponseBody(null))
+        )
+        assertTrue(com.example.api.friendlyAiError(busy).contains("busy"))
     }
 }
