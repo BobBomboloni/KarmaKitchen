@@ -713,7 +713,7 @@ private fun DeliveredCard(to: String, carrier: Carrier, points: Int) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("+${"%,d".format(points)} Karma coins added", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                Text("+${"%,d".format(points)} karma coins added", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
             }
         }
     }

@@ -313,7 +313,7 @@ fun KarmaKitchenApp() {
                 TierListScreen(navController = navController, userProfile = userProfile)
             }
             composable(Screen.Smiles.route) {
-                SmileWallScreen(donorName = userProfile.name)
+                SmileWallScreen(donorName = displayName(userProfile.name))
             }
             composable(
                 route = Screen.SendSmile.route,
@@ -377,7 +377,7 @@ fun WelcomeScreen(navController: NavController) {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Share surplus food with people nearby. When it reaches them, you earn Karma Points.",
+                    text = "Share surplus food with people nearby. When it reaches them, you earn karma coins.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,

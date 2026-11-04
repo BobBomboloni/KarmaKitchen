@@ -1280,7 +1280,7 @@ private fun StockCard(item: StockItem, onDone: () -> Unit, modifier: Modifier = 
         Spacer(Modifier.width(8.dp))
         TextButton(onClick = onDone) {
             Text(
-                if (status == StockStatus.Expired) "Dispose" else "Handed out",
+                if (status == StockStatus.Expired) "Dispose" else "Hand out",
                 style = MaterialTheme.typography.labelLarge,
                 color = if (status == StockStatus.Expired) DangerColor else PrimaryGreen
             )

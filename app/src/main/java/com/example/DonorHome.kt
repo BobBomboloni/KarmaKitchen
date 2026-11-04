@@ -427,7 +427,7 @@ private fun KarmaPill(points: Int, onClick: () -> Unit) {
 @Composable
 private fun HomeGreeting(name: String) {
     val greeting = remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) }
-    val firstName = name.trim().substringBefore(" ")
+    val firstName = displayName(name).substringBefore(" ")
     Text(
         text = buildAnnotatedString {
             if (firstName.isBlank()) {
@@ -655,14 +655,14 @@ private fun RewardsSlide(points: Int, onOpenStore: () -> Unit) {
                 .widthIn(max = 170.dp)
         ) {
             Text(
-                "Redeem your points",
+                "Redeem your coins",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MealsTextPrimary
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "You have ${"%,d".format(points)} points to swap for gift cards.",
+                "You have ${"%,d".format(points)} coins to swap for gift cards.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextPrimary
             )
@@ -1199,7 +1199,7 @@ private fun YourImpactCard(
                 Column(Modifier.weight(1f)) {
                     Text("${tier.current} tier", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                     Text(
-                        if (tier.next != null) "${tier.pointsToNext} points to ${tier.next}" else "Top tier reached",
+                        if (tier.next != null) "${"%,d".format(tier.pointsToNext)} coins to ${tier.next}" else "Top tier reached",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
@@ -1218,7 +1218,7 @@ private fun YourImpactCard(
             )
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth()) {
-                ImpactStat("%,d".format(animatedKarma), "Karma points", Modifier.weight(1f))
+                ImpactStat("%,d".format(animatedKarma), "Karma coins", Modifier.weight(1f))
                 ImpactStat("$DEMO_MEALS_SHARED", "Meals shared", Modifier.weight(1f))
                 ImpactStat("$smileCount", if (smileCount == 1) "Smile" else "Smiles", Modifier.weight(1f))
             }
@@ -1364,7 +1364,7 @@ private fun VoucherCard(item: RewardItem, canAfford: Boolean, onClick: () -> Uni
             Text(item.brand, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 1)
             Spacer(Modifier.height(8.dp))
             Text(
-                if (canAfford) "Ready to redeem" else "${"%,d".format(item.points)} points",
+                if (canAfford) "Ready to redeem" else "${"%,d".format(item.points)} coins",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (canAfford) PrimaryGreen else TextTertiary
             )

@@ -396,7 +396,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                         NgoState.post(
                             NgoDonation(
                                 id = id,
-                                donor = userProfile.name.trim().ifBlank { "A donor" },
+                                donor = displayName(userProfile.name).ifBlank { "A donor" },
                                 title = draft.title.trim(),
                                 servings = servingsCount(draft.servings),
                                 isVeg = draft.isVeg,

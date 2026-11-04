@@ -143,7 +143,7 @@ val dummyFeed = listOf(
     LiveFeedItem("Riya donated 12 servings of veg biryani.", "4 min ago", FoodCategory.Meals),
     LiveFeedItem("Arjun saved 4 meals from his canteen.", "18 min ago", FoodCategory.Vegetables),
     LiveFeedItem("Annapurna Seva Trust received 30 chapatis from Meera.", "40 min ago", FoodCategory.Bakery),
-    LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", "1 hour ago", FoodCategory.Dairy),
+    LiveFeedItem("Kabir earned 150 karma coins for an urgent delivery.", "1 hour ago", FoodCategory.Dairy),
     LiveFeedItem("Hope Shelter reached its goal of 200 meals today.", "2 hours ago", FoodCategory.Meals)
 )
 
@@ -167,6 +167,11 @@ fun communityProgress(shared: Int = COMMUNITY_MEALS_THIS_MONTH, goal: Int = COMM
 const val DEFAULT_PICKUP_AREA = "Alkapuri, Vadodara"
 
 /** Text for the pickup location at the top of the home screen. */
+/** A name as people expect to see it: "shamikh chasmawala" shows as "Shamikh Chasmawala". */
+fun displayName(name: String): String =
+    name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+
 fun pickupLabel(address: String): String = address.trim().ifBlank { DEFAULT_PICKUP_AREA }
 
 /** "Just now", "12 min ago", "3 hours ago", "Yesterday", "5 days ago", "2 weeks ago". */
