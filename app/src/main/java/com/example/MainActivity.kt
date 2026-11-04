@@ -351,15 +351,14 @@ fun WelcomeScreen(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                AnimatedKarmaLogo(size = 96.dp)
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = "Welcome to",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                KarmaKitchenWordmark(height = 60.dp)
+                KarmaKitchenWordmark(height = 64.dp, swayLeaf = true)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Share surplus food with people nearby. When it reaches them, you earn Karma Points.",
