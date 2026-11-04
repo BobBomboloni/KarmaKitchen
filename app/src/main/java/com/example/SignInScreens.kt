@@ -149,10 +149,8 @@ fun SignInScreen() {
     }
 
     GateColumn {
-        Spacer(Modifier.height(24.dp))
-        AnimatedKarmaLogo(size = 96.dp)
-        Spacer(Modifier.height(4.dp))
-        KarmaKitchenWordmark(height = 56.dp)
+        Spacer(Modifier.height(72.dp))
+        KarmaKitchenWordmark(height = 64.dp, swayLeaf = true)
         Spacer(Modifier.height(8.dp))
         Text(
             if (creating) "Create your account" else "Sign in to share and receive food",
