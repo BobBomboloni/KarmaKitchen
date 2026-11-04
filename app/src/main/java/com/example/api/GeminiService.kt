@@ -18,6 +18,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
@@ -70,9 +71,19 @@ data class FoodAnalysisResult(
     val rawResponse: String = ""
 )
 
+/** The model every AI feature uses first. */
+const val PRIMARY_MODEL = "gemini-3.6-flash"
+
+/**
+ * A lighter free model, tried when the main one is busy (503/429) or unavailable, so a demo
+ * does not stall when Gemini is overloaded. The "-latest" alias always points at a current model.
+ */
+const val BACKUP_MODEL = "gemini-flash-lite-latest"
+
 interface GeminiApiService {
-    @POST("v1beta/models/gemini-3.5-flash:generateContent")
+    @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
+        @Path("model") model: String,
         @Query("key") apiKey: String,
         @Body request: GenerateContentRequest
     ): GenerateContentResponse
@@ -98,7 +109,7 @@ suspend fun chatWithGemini(history: List<ChatMessage>, newMessage: String): Stri
     )
 
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
+        val response = generateWithBackup(apiKey, request)
         val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: "Sorry, I couldn't generate a response."
         return@withContext responseText.trim()
@@ -131,6 +142,37 @@ suspend fun <T> retryWithBackoff(
         }
     }
     return block()
+}
+
+/** Codes worth trying the backup model for: busy, rate-limited, server trouble or model not found. */
+private fun shouldTryBackup(e: Exception): Boolean = when (e) {
+    is retrofit2.HttpException -> e.code() == 404 || e.code() == 429 || e.code() >= 500
+    is java.io.InterruptedIOException -> true // timed out
+    else -> false
+}
+
+/** Calls the main model (with retries), then the backup model once if the main one is busy. */
+suspend fun generateWithBackup(apiKey: String, request: GenerateContentRequest): GenerateContentResponse {
+    return try {
+        retryWithBackoff { RetrofitClient.service.generateContent(PRIMARY_MODEL, apiKey, request) }
+    } catch (e: Exception) {
+        if (e is kotlinx.coroutines.CancellationException || !shouldTryBackup(e)) throw e
+        Log.w("GeminiService", "$PRIMARY_MODEL failed, trying $BACKUP_MODEL", e)
+        retryWithBackoff(times = 2) { RetrofitClient.service.generateContent(BACKUP_MODEL, apiKey, request) }
+    }
+}
+
+/** A short, plain message for the person using the app, instead of "HTTP 503" or a stack trace. */
+fun friendlyAiError(e: Throwable): String = when {
+    e is java.net.UnknownHostException || e is java.net.ConnectException ->
+        "No internet connection. Connect to Wi-Fi or mobile data and try again."
+    e is java.io.InterruptedIOException ->
+        "The AI check took too long. Try again, or fill in the details yourself."
+    e is retrofit2.HttpException && (e.code() == 429 || e.code() >= 500) ->
+        "The AI checker is busy right now. Try again in a moment, or fill in the details yourself."
+    e is IllegalStateException && e.message?.contains("API Key", ignoreCase = true) == true ->
+        "The AI checker is not set up in this copy of the app. You can fill in the details yourself."
+    else -> "We couldn't check this photo. Try again, or fill in the details yourself."
 }
 
 object RetrofitClient {
@@ -233,7 +275,7 @@ suspend fun analyzeFoodWithGemini(base64Image: String): FoodAnalysisResult = wit
     )
 
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
+        val response = generateWithBackup(apiKey, request)
         val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: throw Exception("No response returned from Gemini API.")
 
@@ -324,7 +366,7 @@ suspend fun fetchFoodWasteFacts(): FoodWasteFacts? = withContext(Dispatchers.IO)
     )
     
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
+        val response = generateWithBackup(apiKey, request)
         val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: throw Exception("No response")
             
@@ -413,7 +455,7 @@ suspend fun verifyIntakeWithGemini(base64Image: String): IntakeAnalysisResult = 
     )
 
     try {
-        val response = retryWithBackoff { RetrofitClient.service.generateContent(apiKey, request) }
+        val response = generateWithBackup(apiKey, request)
         val responseText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
             ?: throw Exception("No response returned from Gemini API.")
             

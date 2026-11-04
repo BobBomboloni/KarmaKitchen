@@ -59,7 +59,7 @@ fun welcomeSteps(): List<WelcomeStep> = listOf(
     ),
     WelcomeStep(
         "Earn and spend karma",
-        "Points arrive once the NGO confirms it received the food. Swap them for gift cards from partner brands.",
+        "Coins arrive once the NGO confirms it received the food. Swap them for gift cards from partner brands.",
         R.drawable.illus_step_karma,
         AccentGold
     )

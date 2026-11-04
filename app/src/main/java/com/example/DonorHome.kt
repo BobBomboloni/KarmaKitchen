@@ -98,6 +98,8 @@ import coil.compose.AsyncImage
 import com.example.api.FoodWasteFacts
 import com.example.api.fetchFoodWasteFacts
 import com.example.ui.theme.AccentGold
+import com.example.ui.theme.BrandMaroon
+import com.example.ui.theme.OnBrandMaroon
 import com.example.ui.theme.InfoColor
 import com.example.ui.theme.InfoContainer
 import com.example.ui.theme.MealsCardBg
@@ -234,6 +236,7 @@ fun DonorDashboardScreen(navController: NavController, userProfile: UserProfile)
                 ActiveDonationCard(
                     donation = donation,
                     onDismiss = { DonationLog.acknowledge(donation.id) },
+                    onTrack = { navController.navigate(Screen.TrackPickup.routeFor(donation.id, ngoSide = false)) },
                     modifier = Modifier
                         .padding(horizontal = ScreenPadding)
                         .animateItem()
@@ -426,7 +429,7 @@ private fun KarmaPill(points: Int, onClick: () -> Unit) {
 @Composable
 private fun HomeGreeting(name: String) {
     val greeting = remember { greetingForHour(java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) }
-    val firstName = name.trim().substringBefore(" ")
+    val firstName = displayName(name).substringBefore(" ")
     Text(
         text = buildAnnotatedString {
             if (firstName.isBlank()) {
@@ -602,7 +605,8 @@ private fun HeroFrame(background: Color, content: @Composable BoxScope.() -> Uni
 
 @Composable
 private fun DonateSlide(onDonate: () -> Unit) {
-    HeroFrame(PrimaryGreenLight) {
+    // The main call to action wears the logo's maroon.
+    HeroFrame(BrandMaroon) {
         Image(
             painter = painterResource(R.drawable.illus_hero_food),
             contentDescription = null,
@@ -621,20 +625,20 @@ private fun DonateSlide(onDonate: () -> Unit) {
                 "Got extra food?",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = OnBrandMaroon
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 "Photograph it and a volunteer will collect it.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = OnPrimaryGreenContainer,
+                color = OnBrandMaroon.copy(alpha = 0.88f),
                 modifier = Modifier.widthIn(max = 160.dp)
             )
             Spacer(Modifier.height(14.dp))
             KarmaButton(
                 onClick = onDonate,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = OnPrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = OnBrandMaroon, contentColor = BrandMaroon),
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 modifier = Modifier.height(40.dp)
             ) {
@@ -654,14 +658,14 @@ private fun RewardsSlide(points: Int, onOpenStore: () -> Unit) {
                 .widthIn(max = 170.dp)
         ) {
             Text(
-                "Redeem your points",
+                "Redeem your coins",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MealsTextPrimary
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "You have ${"%,d".format(points)} points to swap for gift cards.",
+                "You have ${"%,d".format(points)} coins to swap for gift cards.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextPrimary
             )
@@ -782,13 +786,15 @@ private fun rememberFoodWasteFacts(): State<FoodWasteFacts> {
 // -----------------------------------------------------------------------------
 
 @Composable
-private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, onTrack: () -> Unit, modifier: Modifier = Modifier) {
     val steps = listOf("Posted", "Picked up", "Delivered")
     val delivered = donation.status == STATUS_DELIVERED
     // Past the last step, so every dot shows a tick once the food has arrived.
     val stage = if (delivered) steps.size else donation.stage
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .bounceCard(RoundedCornerShape(16.dp), onTrack),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceColor)
     ) {
@@ -808,7 +814,7 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "Delivered"
-                            stage == 0 -> "Waiting for a volunteer"
+                            stage == 0 -> "Finding a carrier"
                             else -> "Donation on its way"
                         },
                         style = MaterialTheme.typography.labelMedium,
@@ -824,7 +830,7 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
                     Text(
                         when {
                             delivered -> "${donation.ngo} has it. +${"%,d".format(donation.points)} coins added."
-                            stage == 0 -> "Nearby NGOs can see it now"
+                            stage == 0 -> "Nearby NGOs and Karma Riders can see it"
                             else -> "${donation.volunteer ?: "A volunteer"} is taking it to ${donation.ngo}"
                         },
                         style = MaterialTheme.typography.bodySmall,
@@ -851,10 +857,15 @@ private fun ActiveDonationCard(donation: DonationItem, onDismiss: () -> Unit, mo
             }
             Spacer(Modifier.height(16.dp))
             TrackerSteps(labels = steps, stage = stage)
+            Spacer(Modifier.height(4.dp))
             if (delivered) {
-                Spacer(Modifier.height(4.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
                     Text("Got it", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
+                }
+            } else {
+                TextButton(onClick = onTrack, modifier = Modifier.align(Alignment.End)) {
+                    Text("Track live", style = MaterialTheme.typography.labelLarge, color = PrimaryGreen)
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -1191,7 +1202,7 @@ private fun YourImpactCard(
                 Column(Modifier.weight(1f)) {
                     Text("${tier.current} tier", style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                     Text(
-                        if (tier.next != null) "${tier.pointsToNext} points to ${tier.next}" else "Top tier reached",
+                        if (tier.next != null) "${"%,d".format(tier.pointsToNext)} coins to ${tier.next}" else "Top tier reached",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
@@ -1210,7 +1221,7 @@ private fun YourImpactCard(
             )
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth()) {
-                ImpactStat("%,d".format(animatedKarma), "Karma points", Modifier.weight(1f))
+                ImpactStat("%,d".format(animatedKarma), "Karma coins", Modifier.weight(1f))
                 ImpactStat("$DEMO_MEALS_SHARED", "Meals shared", Modifier.weight(1f))
                 ImpactStat("$smileCount", if (smileCount == 1) "Smile" else "Smiles", Modifier.weight(1f))
             }
@@ -1356,7 +1367,7 @@ private fun VoucherCard(item: RewardItem, canAfford: Boolean, onClick: () -> Uni
             Text(item.brand, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 1)
             Spacer(Modifier.height(8.dp))
             Text(
-                if (canAfford) "Ready to redeem" else "${"%,d".format(item.points)} points",
+                if (canAfford) "Ready to redeem" else "${"%,d".format(item.points)} coins",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (canAfford) PrimaryGreen else TextTertiary
             )

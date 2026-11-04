@@ -105,15 +105,36 @@ fun guessCategory(title: String): FoodCategory {
     }
 }
 
+/**
+ * A date for the demo content, counted back from today so it never looks out of date:
+ * "Today, 1:30 PM", "Yesterday, 7:45 PM" or "29 Sep". Today's entry is [minutesAgo] before now.
+ */
+fun demoDate(daysAgo: Int, hour: Int = 12, minute: Int = 0, minutesAgo: Int = 0, now: Long = System.currentTimeMillis()): String {
+    val cal = java.util.Calendar.getInstance().apply { timeInMillis = now }
+    if (daysAgo == 0) {
+        cal.add(java.util.Calendar.MINUTE, -minutesAgo)
+    } else {
+        cal.add(java.util.Calendar.DAY_OF_YEAR, -daysAgo)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, hour)
+        cal.set(java.util.Calendar.MINUTE, minute)
+    }
+    val time = java.text.SimpleDateFormat("h:mm a", java.util.Locale.ENGLISH).format(cal.time)
+    return when (daysAgo) {
+        0 -> "Today, $time"
+        1 -> "Yesterday, $time"
+        else -> java.text.SimpleDateFormat("d MMM", java.util.Locale.ENGLISH).format(cal.time)
+    }
+}
+
 /** The delivered ones match what the NGO side of the app has received, so the demo stays consistent. */
 val recentDonations = listOf(
     DonationItem(
-        "Veg Biryani, 12 servings", "Vadodara Relief Kitchen", "Today, 1:30 PM", STATUS_ON_THE_WAY, 300,
+        "Veg Biryani, 12 servings", "Vadodara Relief Kitchen", demoDate(0, minutesAgo = 25), STATUS_ON_THE_WAY, 300,
         FoodCategory.Meals, volunteer = "Imran", etaMinutes = 8
     ),
-    DonationItem("Leftover Catering Sandwiches", NGO_NAME, "Yesterday, 7:45 PM", STATUS_DELIVERED, 150, FoodCategory.Meals),
-    DonationItem("Fresh Vegetable Basket", NGO_NAME, "29 Sep", STATUS_DELIVERED, 200, FoodCategory.Vegetables),
-    DonationItem("Bakery Surplus, 20 breads", NGO_NAME, "26 Sep", STATUS_DELIVERED, 100, FoodCategory.Bakery)
+    DonationItem("Leftover Catering Sandwiches", NGO_NAME, demoDate(1, 19, 45), STATUS_DELIVERED, 150, FoodCategory.Meals),
+    DonationItem("Fresh Vegetable Basket", NGO_NAME, demoDate(4, 13, 10), STATUS_DELIVERED, 200, FoodCategory.Vegetables),
+    DonationItem("Bakery Surplus, 20 breads", NGO_NAME, demoDate(7, 9, 30), STATUS_DELIVERED, 100, FoodCategory.Bakery)
 )
 
 data class LiveFeedItem(val message: String, val timeAgo: String, val category: FoodCategory)
@@ -122,7 +143,7 @@ val dummyFeed = listOf(
     LiveFeedItem("Riya donated 12 servings of veg biryani.", "4 min ago", FoodCategory.Meals),
     LiveFeedItem("Arjun saved 4 meals from his canteen.", "18 min ago", FoodCategory.Vegetables),
     LiveFeedItem("Annapurna Seva Trust received 30 chapatis from Meera.", "40 min ago", FoodCategory.Bakery),
-    LiveFeedItem("Kabir earned 150 Karma Points for an urgent delivery.", "1 hour ago", FoodCategory.Dairy),
+    LiveFeedItem("Kabir earned 150 karma coins for an urgent delivery.", "1 hour ago", FoodCategory.Dairy),
     LiveFeedItem("Hope Shelter reached its goal of 200 meals today.", "2 hours ago", FoodCategory.Meals)
 )
 
@@ -146,6 +167,11 @@ fun communityProgress(shared: Int = COMMUNITY_MEALS_THIS_MONTH, goal: Int = COMM
 const val DEFAULT_PICKUP_AREA = "Alkapuri, Vadodara"
 
 /** Text for the pickup location at the top of the home screen. */
+/** A name as people expect to see it: "shamikh chasmawala" shows as "Shamikh Chasmawala". */
+fun displayName(name: String): String =
+    name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+
 fun pickupLabel(address: String): String = address.trim().ifBlank { DEFAULT_PICKUP_AREA }
 
 /** "Just now", "12 min ago", "3 hours ago", "Yesterday", "5 days ago", "2 weeks ago". */

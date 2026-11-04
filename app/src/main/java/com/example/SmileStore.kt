@@ -17,7 +17,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 /** The NGO this phone represents when it is used in the receiver role. */
-const val NGO_NAME = "Navrachana Community"
+const val NGO_NAME = "Sneh Community Kitchen"
 
 /** A food donation the NGO has received and can send a smile photo for. */
 data class Receival(
@@ -29,9 +29,9 @@ data class Receival(
 
 /** Matches the donor's recent delivered donations so the demo loop stays consistent. */
 val sampleReceivals = listOf(
-    Receival("sandwiches", "Leftover Catering Sandwiches", "yesterday, 7:45 PM", 18),
-    Receival("veg-basket", "Fresh Vegetable Basket", "29 Sep", 25),
-    Receival("bakery", "Bakery Surplus, 20 breads", "26 Sep", 20)
+    Receival("sandwiches", "Leftover Catering Sandwiches", demoDate(1, 19, 45).replaceFirstChar { it.lowercase() }, 18),
+    Receival("veg-basket", "Fresh Vegetable Basket", demoDate(4, 13, 10), 25),
+    Receival("bakery", "Bakery Surplus, 20 breads", demoDate(7, 9, 30), 20)
 )
 
 /** A photo of people enjoying a donation, sent by an NGO to the donor. */
@@ -52,7 +52,10 @@ data class SmileEntry(
  * True when the receiver's Smiles tab lists this photo under "Sent by you". The built-in example
  * photos count as well, so that list is not empty the first time the receiver opens it.
  */
-fun SmileEntry.isSentByThisNgo(): Boolean = isExample || ngoName == NGO_NAME
+fun SmileEntry.isSentByThisNgo(): Boolean = isExample || ngoName == NGO_NAME || ngoName == OLD_NGO_NAME
+
+/** The demo NGO's earlier name; photos already saved on a phone under it still count as sent here. */
+private const val OLD_NGO_NAME = "Navrachana Community"
 
 /**
  * Prototype storage for smile photos. Photos live in the app's private storage and the list

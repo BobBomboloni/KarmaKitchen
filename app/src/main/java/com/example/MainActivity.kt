@@ -32,6 +32,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.EnterTransition
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -132,7 +135,15 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             MyApplicationTheme {
-                KarmaKitchenApp()
+                // The startup animation plays over the app once per launch (not again on rotation),
+                // then fades away to show the first screen, which is already loaded underneath.
+                var showIntro by rememberSaveable { mutableStateOf(true) }
+                Box(Modifier.fillMaxSize()) {
+                    KarmaKitchenApp()
+                    AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
+                        StartupAnimation(onFinished = { showIntro = false })
+                    }
+                }
             }
         }
     }
@@ -161,6 +172,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Smiles : Screen("smiles", "Smiles", Icons.Filled.Mood)
     object SendSmile : Screen("send_smile/{receivalId}", "Send a smile", Icons.Filled.Mood) {
         fun routeFor(receivalId: String) = "send_smile/$receivalId"
+    }
+    object TrackPickup : Screen("track/{side}/{donationId}", "Live pickup", Icons.Filled.Star) {
+        fun routeFor(donationId: String, ngoSide: Boolean) = "track/${if (ngoSide) "ngo" else "donor"}/$donationId"
     }
 
 }
@@ -223,8 +237,8 @@ fun KarmaKitchenApp() {
             ) {
                 FloatingActionButton(
                     onClick = { navController.goToTab(Screen.Donate.route) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = OnPrimaryGreen
+                    containerColor = BrandMaroon,
+                    contentColor = OnBrandMaroon
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "New donation")
                 }
@@ -233,7 +247,8 @@ fun KarmaKitchenApp() {
         floatingActionButtonPosition = FabPosition.End,
         bottomBar = {
             AnimatedVisibility(
-                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.SendSmile.route,
+                visible = currentRoute != Screen.Welcome.route && currentRoute != Screen.RoleSelection.route && currentRoute != Screen.SendSmile.route &&
+                    currentRoute != Screen.TrackPickup.route,
                 enter = slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
                 exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200))
             ) {
@@ -302,14 +317,21 @@ fun KarmaKitchenApp() {
                 ProfileEditScreen(
                     profile = userProfile,
                     onProfileUpdate = { userProfile = it },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSwitchRole = {
+                        if (!navController.popBackStack(Screen.RoleSelection.route, false)) {
+                            navController.navigate(Screen.RoleSelection.route) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        }
+                    }
                 )
             }
             composable(Screen.Tiers.route) {
                 TierListScreen(navController = navController, userProfile = userProfile)
             }
             composable(Screen.Smiles.route) {
-                SmileWallScreen(donorName = userProfile.name)
+                SmileWallScreen(donorName = displayName(userProfile.name))
             }
             composable(
                 route = Screen.SendSmile.route,
@@ -318,6 +340,19 @@ fun KarmaKitchenApp() {
                 SendSmileScreen(
                     navController = navController,
                     receivalId = entry.arguments?.getString("receivalId") ?: ""
+                )
+            }
+            composable(
+                route = Screen.TrackPickup.route,
+                arguments = listOf(
+                    navArgument("side") { type = NavType.StringType },
+                    navArgument("donationId") { type = NavType.StringType }
+                )
+            ) { entry ->
+                TrackPickupScreen(
+                    navController = navController,
+                    donationId = entry.arguments?.getString("donationId") ?: "",
+                    ngoSide = entry.arguments?.getString("side") == "ngo"
                 )
             }
         }
@@ -340,27 +375,18 @@ fun WelcomeScreen(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_karma_logo),
-                    contentDescription = "KarmaKitchen Logo",
-                    modifier = Modifier.size(120.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
+                AnimatedKarmaLogo(size = 96.dp)
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Welcome to",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                KarmaKitchenLogoText(
-                    fontSize = 36.sp,
-                    textColor = MaterialTheme.colorScheme.onBackground,
-                    accentColor = MaterialTheme.colorScheme.primary
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                KarmaKitchenWordmark(height = 60.dp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Share surplus food with people nearby. When it reaches them, you earn Karma Points.",
+                    text = "Share surplus food with people nearby. When it reaches them, you earn karma coins.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
@@ -438,52 +464,14 @@ fun WelcomeScreen(navController: NavController) {
     }
 }
 
-@Composable
-fun KarmaKitchenLogoText(
-    modifier: Modifier = Modifier,
-    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
-    textColor: Color = SecondaryAmber,
-    accentColor: Color = PrimaryGreen
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Karma",
-            fontFamily = Fraunces,
-            fontWeight = FontWeight.Bold,
-            fontSize = fontSize,
-            color = textColor,
-            letterSpacing = (-0.5).sp
-        )
-        Text(
-            text = "Kitchen",
-            fontFamily = Fraunces,
-            fontWeight = FontWeight.Bold,
-            fontSize = fontSize,
-            color = accentColor,
-            letterSpacing = (-0.5).sp
-        )
-    }
-}
-
-@Composable
-fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(id = R.drawable.ic_karma_logo),
-        contentDescription = "Karma Kitchen Logo",
-        modifier = modifier,
-        contentScale = ContentScale.Fit
-    )
-}
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileEditScreen(
     profile: UserProfile,
     onProfileUpdate: (UserProfile) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSwitchRole: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(profile.name) }
     var email by remember { mutableStateOf(profile.email) }
@@ -587,6 +575,27 @@ fun ProfileEditScreen(
                 checked = ThemeSettings.dark,
                 onCheckedChange = { ThemeSettings.set(context, it) }
             )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceColor)
+                .clickable {
+                    // Keep what was typed, then go back to the role picker.
+                    onProfileUpdate(profile.copy(name = name, email = email, phone = phone, address = address))
+                    onSwitchRole()
+                }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Switch role", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text("See the app as an NGO receiving food", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -800,14 +809,8 @@ fun RoleSelectionScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        AnimatedKarmaLogo(size = 132.dp)
-        Spacer(modifier = Modifier.height(4.dp))
-        KarmaKitchenLogoText(
-            fontSize = 40.sp,
-            textColor = TextPrimary,
-            accentColor = PrimaryGreen
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        KarmaKitchenWordmark(height = 76.dp, swayLeaf = true)
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Surplus food, shared with people who need it",
             style = MaterialTheme.typography.bodyLarge,
@@ -831,7 +834,7 @@ fun RoleSelectionScreen(navController: NavController) {
             title = "I'm receiving food",
             subtitle = "For NGOs, shelters and community kitchens",
             art = R.drawable.illus_role_ngo,
-            tint = SecondaryAmber,
+            tint = BrandMaroon,
             onClick = { navController.navigate(Screen.NgoDashboard.route) }
         )
 

@@ -18,7 +18,7 @@ class SmileStoreTest {
         id = id,
         donationId = donationId,
         donationTitle = "Leftover Catering Sandwiches",
-        ngoName = "Navrachana Community",
+        ngoName = NGO_NAME,
         message = "Thank you!",
         people = 18,
         photoPath = "/data/smiles/$id.jpg",

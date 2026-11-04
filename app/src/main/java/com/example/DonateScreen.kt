@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.TipsAndUpdates
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -116,6 +117,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.api.FoodAnalysisResult
 import com.example.api.analyzeFoodWithGemini
+import com.example.api.friendlyAiError
 import com.example.api.uriToBase64
 import com.example.ui.DonationChatbot
 import com.example.ui.ScannerAnimation
@@ -165,6 +167,8 @@ private class DonationDraft {
     var analysis by mutableStateOf<FoodAnalysisResult?>(null)
     var analyzing by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+    /** The donor typed the details in because the AI check could not run. */
+    var manual by mutableStateOf(false)
 
     var title by mutableStateOf("")
     var servings by mutableStateOf("")
@@ -185,6 +189,7 @@ private class DonationDraft {
         analysis = null
         analyzing = false
         error = null
+        manual = false
     }
 
     fun reset() {
@@ -269,7 +274,8 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                 draft.shelfLife = result.shelfLife
                 draft.storageTip = result.storageTip
             } catch (e: Exception) {
-                draft.error = e.message ?: "Failed to analyze food with Gemini AI."
+                if (e is CancellationException) throw e
+                draft.error = friendlyAiError(e)
             } finally {
                 draft.analyzing = false
             }
@@ -349,7 +355,21 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                         draft.clearScan()
                         showCamera = true
                     },
-                    onContinue = { step = 2 }
+                    onContinue = { step = 2 },
+                    onRetry = { draft.photo?.let { analyzeUri(it) } },
+                    onManual = {
+                        // The AI could not run, so the donor fills in the details and the NGO
+                        // checks the food at pickup. Coins use the lowest rate until then.
+                        draft.error = null
+                        draft.analysis = null
+                        draft.manual = true
+                        draft.title = ""
+                        draft.servings = "1 serving"
+                        draft.quality = "Checked by donor"
+                        draft.shelfLife = ""
+                        draft.storageTip = ""
+                        step = 2
+                    }
                 )
                 2 -> DetailsStep(draft = draft, onBack = { step = 1 }, onNext = { step = 3 })
                 else -> PickupStep(
@@ -376,7 +396,7 @@ fun DonationCreationScreen(navController: NavController, userProfile: UserProfil
                         NgoState.post(
                             NgoDonation(
                                 id = id,
-                                donor = userProfile.name.trim().ifBlank { "A donor" },
+                                donor = displayName(userProfile.name).ifBlank { "A donor" },
                                 title = draft.title.trim(),
                                 servings = servingsCount(draft.servings),
                                 isVeg = draft.isVeg,
@@ -613,7 +633,9 @@ private fun PhotoStep(
     onTakePhoto: () -> Unit,
     onPickGallery: () -> Unit,
     onRescan: () -> Unit,
-    onContinue: () -> Unit
+    onContinue: () -> Unit,
+    onRetry: () -> Unit,
+    onManual: () -> Unit
 ) {
     val result = draft.analysis
     val photo = draft.photo
@@ -665,7 +687,9 @@ private fun PhotoStep(
                 }
             }
 
-            draft.error?.let { message -> item { ErrorCard(message) } }
+            draft.error?.let { message ->
+                item { ErrorCard(message, canRetry = photo != null, onRetry = onRetry, onManual = onManual) }
+            }
 
             item { SafetyChat(open = chatOpen, onToggle = { chatOpen = !chatOpen }) }
 
@@ -1066,18 +1090,24 @@ private fun UnsafeNotice(reason: String?) {
 }
 
 @Composable
-private fun ErrorCard(message: String) {
-    Row(
+private fun ErrorCard(message: String, canRetry: Boolean, onRetry: () -> Unit, onManual: () -> Unit) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(DangerContainer)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(14.dp)
     ) {
-        Icon(Icons.Filled.Warning, contentDescription = null, tint = DangerColor)
-        Spacer(Modifier.width(10.dp))
-        Text(message, style = MaterialTheme.typography.bodySmall, color = OnDangerContainer, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Warning, contentDescription = null, tint = DangerColor)
+            Spacer(Modifier.width(10.dp))
+            Text(message, style = MaterialTheme.typography.bodySmall, color = OnDangerContainer, modifier = Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            if (canRetry) SecondaryAction("Try again", onRetry, Modifier.weight(1f))
+            PrimaryAction("Fill in by hand", onManual, Modifier.weight(1f))
+        }
     }
 }
 
@@ -1169,9 +1199,15 @@ private fun DetailsStep(draft: DonationDraft, onBack: () -> Unit, onNext: () -> 
                             overflow = TextOverflow.Ellipsis
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Verified, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Checked by AI", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            if (draft.manual) {
+                                Icon(Icons.Filled.Info, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Filled in by you. The NGO checks it at pickup.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            } else {
+                                Icon(Icons.Filled.Verified, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Checked by AI", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            }
                         }
                     }
                 }
