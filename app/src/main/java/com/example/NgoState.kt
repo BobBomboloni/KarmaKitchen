@@ -235,7 +235,7 @@ object NgoState {
         val pledged = donations.filter { it.stage != OfferStage.Offered }.sumOf { it.servings }.coerceAtMost(goal)
         val wanted = needs.joinToString(" and ") { it.label.lowercase() }
         return NgoRequest(
-            id = "navrachana-urgent", name = NGO_NAME, area = "Fatehgunj", distanceKm = 0.8, urgent = true,
+            id = "sneh-urgent", name = NGO_NAME, area = "Fatehgunj", distanceKm = 0.8, urgent = true,
             need = "Urgent: $wanted needed today", pledged = pledged, goal = goal, closes = "Closes at 9 PM",
             accepts = needs, icon = needs.first()
         )
