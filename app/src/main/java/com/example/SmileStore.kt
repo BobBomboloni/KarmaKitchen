@@ -29,9 +29,9 @@ data class Receival(
 
 /** Matches the donor's recent delivered donations so the demo loop stays consistent. */
 val sampleReceivals = listOf(
-    Receival("sandwiches", "Leftover Catering Sandwiches", "yesterday, 7:45 PM", 18),
-    Receival("veg-basket", "Fresh Vegetable Basket", "29 Sep", 25),
-    Receival("bakery", "Bakery Surplus, 20 breads", "26 Sep", 20)
+    Receival("sandwiches", "Leftover Catering Sandwiches", demoDate(1, 19, 45).replaceFirstChar { it.lowercase() }, 18),
+    Receival("veg-basket", "Fresh Vegetable Basket", demoDate(4, 13, 10), 25),
+    Receival("bakery", "Bakery Surplus, 20 breads", demoDate(7, 9, 30), 20)
 )
 
 /** A photo of people enjoying a donation, sent by an NGO to the donor. */
