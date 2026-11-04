@@ -306,7 +306,14 @@ fun KarmaKitchenApp() {
                 ProfileEditScreen(
                     profile = userProfile,
                     onProfileUpdate = { userProfile = it },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onSwitchRole = {
+                        if (!navController.popBackStack(Screen.RoleSelection.route, false)) {
+                            navController.navigate(Screen.RoleSelection.route) {
+                                popUpTo(navController.graph.id) { inclusive = true }
+                            }
+                        }
+                    }
                 )
             }
             composable(Screen.Tiers.route) {
@@ -500,7 +507,8 @@ fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
 fun ProfileEditScreen(
     profile: UserProfile,
     onProfileUpdate: (UserProfile) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSwitchRole: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(profile.name) }
     var email by remember { mutableStateOf(profile.email) }
@@ -604,6 +612,27 @@ fun ProfileEditScreen(
                 checked = ThemeSettings.dark,
                 onCheckedChange = { ThemeSettings.set(context, it) }
             )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceColor)
+                .clickable {
+                    // Keep what was typed, then go back to the role picker.
+                    onProfileUpdate(profile.copy(name = name, email = email, phone = phone, address = address))
+                    onSwitchRole()
+                }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Switch role", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                Text("See the app as an NGO receiving food", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
         }
 
         Spacer(modifier = Modifier.weight(1f))
