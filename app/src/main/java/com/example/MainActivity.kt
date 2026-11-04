@@ -32,6 +32,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.EnterTransition
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -132,7 +135,15 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             MyApplicationTheme {
-                KarmaKitchenApp()
+                // The startup animation plays over the app once per launch (not again on rotation),
+                // then fades away to show the first screen, which is already loaded underneath.
+                var showIntro by rememberSaveable { mutableStateOf(true) }
+                Box(Modifier.fillMaxSize()) {
+                    KarmaKitchenApp()
+                    AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
+                        StartupAnimation(onFinished = { showIntro = false })
+                    }
+                }
             }
         }
     }
@@ -223,8 +234,8 @@ fun KarmaKitchenApp() {
             ) {
                 FloatingActionButton(
                     onClick = { navController.goToTab(Screen.Donate.route) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = OnPrimaryGreen
+                    containerColor = BrandMaroon,
+                    contentColor = OnBrandMaroon
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "New donation")
                 }
@@ -340,24 +351,15 @@ fun WelcomeScreen(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_karma_logo),
-                    contentDescription = "KarmaKitchen Logo",
-                    modifier = Modifier.size(120.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
+                AnimatedKarmaLogo(size = 96.dp)
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Welcome to",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                KarmaKitchenLogoText(
-                    fontSize = 36.sp,
-                    textColor = MaterialTheme.colorScheme.onBackground,
-                    accentColor = MaterialTheme.colorScheme.primary
-                )
+                Spacer(modifier = Modifier.height(8.dp))
+                KarmaKitchenWordmark(height = 60.dp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Share surplus food with people nearby. When it reaches them, you earn Karma Points.",
@@ -438,45 +440,6 @@ fun WelcomeScreen(navController: NavController) {
     }
 }
 
-@Composable
-fun KarmaKitchenLogoText(
-    modifier: Modifier = Modifier,
-    fontSize: androidx.compose.ui.unit.TextUnit = 38.sp,
-    textColor: Color = SecondaryAmber,
-    accentColor: Color = PrimaryGreen
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Karma",
-            fontFamily = Fraunces,
-            fontWeight = FontWeight.Bold,
-            fontSize = fontSize,
-            color = textColor,
-            letterSpacing = (-0.5).sp
-        )
-        Text(
-            text = "Kitchen",
-            fontFamily = Fraunces,
-            fontWeight = FontWeight.Bold,
-            fontSize = fontSize,
-            color = accentColor,
-            letterSpacing = (-0.5).sp
-        )
-    }
-}
-
-@Composable
-fun KarmaInfinityLogo(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(id = R.drawable.ic_karma_logo),
-        contentDescription = "Karma Kitchen Logo",
-        modifier = modifier,
-        contentScale = ContentScale.Fit
-    )
-}
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -800,14 +763,8 @@ fun RoleSelectionScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        AnimatedKarmaLogo(size = 132.dp)
-        Spacer(modifier = Modifier.height(4.dp))
-        KarmaKitchenLogoText(
-            fontSize = 40.sp,
-            textColor = TextPrimary,
-            accentColor = PrimaryGreen
-        )
-        Spacer(modifier = Modifier.height(8.dp))
+        KarmaKitchenWordmark(height = 76.dp, swayLeaf = true)
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Surplus food, shared with people who need it",
             style = MaterialTheme.typography.bodyLarge,
@@ -831,7 +788,7 @@ fun RoleSelectionScreen(navController: NavController) {
             title = "I'm receiving food",
             subtitle = "For NGOs, shelters and community kitchens",
             art = R.drawable.illus_role_ngo,
-            tint = SecondaryAmber,
+            tint = BrandMaroon,
             onClick = { navController.navigate(Screen.NgoDashboard.route) }
         )
 

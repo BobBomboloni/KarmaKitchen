@@ -98,6 +98,8 @@ import coil.compose.AsyncImage
 import com.example.api.FoodWasteFacts
 import com.example.api.fetchFoodWasteFacts
 import com.example.ui.theme.AccentGold
+import com.example.ui.theme.BrandMaroon
+import com.example.ui.theme.OnBrandMaroon
 import com.example.ui.theme.InfoColor
 import com.example.ui.theme.InfoContainer
 import com.example.ui.theme.MealsCardBg
@@ -602,7 +604,8 @@ private fun HeroFrame(background: Color, content: @Composable BoxScope.() -> Uni
 
 @Composable
 private fun DonateSlide(onDonate: () -> Unit) {
-    HeroFrame(PrimaryGreenLight) {
+    // The main call to action wears the logo's maroon.
+    HeroFrame(BrandMaroon) {
         Image(
             painter = painterResource(R.drawable.illus_hero_food),
             contentDescription = null,
@@ -621,20 +624,20 @@ private fun DonateSlide(onDonate: () -> Unit) {
                 "Got extra food?",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = OnBrandMaroon
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 "Photograph it and a volunteer will collect it.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = OnPrimaryGreenContainer,
+                color = OnBrandMaroon.copy(alpha = 0.88f),
                 modifier = Modifier.widthIn(max = 160.dp)
             )
             Spacer(Modifier.height(14.dp))
             KarmaButton(
                 onClick = onDonate,
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = TextPrimary, contentColor = OnPrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = OnBrandMaroon, contentColor = BrandMaroon),
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 modifier = Modifier.height(40.dp)
             ) {
