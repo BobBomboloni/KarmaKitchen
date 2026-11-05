@@ -138,6 +138,10 @@ private object Intro {
     val growLengths: List<Float> by lazy {
         growPaths.map { p -> PathMeasure().apply { setPath(p, false) }.length }
     }
+    // The part of the K each stroke may uncover (see BrandArt.GROW).
+    val growRegions: List<Path> by lazy {
+        BrandArt.GROW.map { stroke -> Path().apply { stroke.region.forEach { addPath(BrandPaths.polygon(it)) } } }
+    }
     val kLocal: Path by lazy {
         Path().apply { BrandArt.K_LOCAL.forEach { r -> addRect(Rect(r[0], r[1], r[2], r[3])) } }
     }
@@ -289,7 +293,8 @@ private fun DrawScope.drawGrowingK(t: Float, color: Color) {
     }
     clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, color) }
     // Keep the K only where the strokes have reached: the strokes go into a layer that is
-    // blended with DstIn, so everything outside them is cleared.
+    // blended with DstIn, so everything outside them is cleared. Each stroke is kept to its own
+    // part of the K, so a wide brush never uncovers stray bits of the parts next to it.
     drawIntoCanvas { canvas ->
         canvas.saveLayer(Intro.kBounds, Paint().apply { blendMode = BlendMode.DstIn })
         strokes.forEachIndexed { i, stroke ->
@@ -309,7 +314,10 @@ private fun DrawScope.drawGrowingK(t: Float, color: Color) {
                 strokeJoin = StrokeJoin.Round
                 isAntiAlias = true
             }
+            canvas.save()
+            canvas.clipPath(Intro.growRegions[i])
             canvas.drawPath(segment, paint)
+            canvas.restore()
         }
         canvas.restore()
         canvas.restore()
