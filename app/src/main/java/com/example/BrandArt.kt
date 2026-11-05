@@ -73,13 +73,14 @@ internal object BrandArt {
     // its points, brush width, start and end time (s), easing, and the part of the K it may uncover
     // (polygons, icon space). Keeping each stroke to its own part means no stroke shows little bits
     // of its neighbours, so the edges stay clean while the K grows. The stem's part follows the
-    // stem's own straight edges exactly; parts that grow later overlap the earlier ones slightly so
-    // there are no hairline gaps between them.
+    // stem's own straight edges exactly (and reaches a little into the headline, so its tip stays
+    // round like a sprout); parts that grow later overlap the earlier ones slightly so there are no
+    // hairline gaps between them.
     val GROW = listOf(
         GrowStroke(
-            floatArrayOf(1329.3f, 510.7f, 1340.0f, 506.7f, 1348.3f, 496.7f, 1351.0f, 480.0f, 1351.0f, 420.0f, 1351.0f, 365.0f),
-            40f, 0.8f, 1.45f, false,
-            listOf(floatArrayOf(1337.05f, 358f, 1366.8f, 358f, 1366.8f, 560f, 1250f, 560f, 1250f, 475f, 1337.05f, 475f)),
+            floatArrayOf(1329.3f, 510.7f, 1340.0f, 506.7f, 1348.3f, 496.7f, 1351.0f, 480.0f, 1351.0f, 420.0f, 1351.0f, 358.0f),
+            33f, 0.8f, 1.45f, false,
+            listOf(floatArrayOf(1337.05f, 340f, 1366.8f, 340f, 1366.8f, 560f, 1250f, 560f, 1250f, 475f, 1337.05f, 475f)),
         ),
         GrowStroke(
             floatArrayOf(1353.0f, 422.3f, 1363.3f, 413.3f, 1394.0f, 386.7f, 1426.0f, 358.7f),
