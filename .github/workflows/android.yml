@@ -26,3 +26,12 @@ jobs:
         with:
           name: test-reports
           path: app/build/reports/tests
+      - name: Record the startup animation frames (temporary check)
+        if: always()
+        run: gradle :app:testDebugUnitTest --tests com.example.StartupAnimationTest -Proborazzi.test.record=true --rerun
+      - name: Upload the startup animation frames (temporary check)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intro-frames
+          path: app/build/brand
