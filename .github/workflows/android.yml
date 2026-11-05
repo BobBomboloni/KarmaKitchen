@@ -26,12 +26,3 @@ jobs:
         with:
           name: test-reports
           path: app/build/reports/tests
-      - name: Record the startup animation frames (temporary check)
-        if: always()
-        run: gradle :app:testDebugUnitTest --tests com.example.StartupAnimationTest -Proborazzi.test.record=true --rerun
-      - name: Print the startup animation frames (temporary check)
-        if: always()
-        run: |
-          echo "FRAMES-BEGIN"
-          tar czf - -C app/build/brand . | base64 -w 4000
-          echo "FRAMES-END"
