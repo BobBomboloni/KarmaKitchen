@@ -69,14 +69,46 @@ internal object BrandArt {
     // The grain of food that falls first, where it lands (icon space).
     val GRAIN = floatArrayOf(1329.33f, 510.67f)
 
-    // Pen strokes that grow the K from the grain: points, width, start s, end s, easing.
+    // Pen strokes that grow the K from the grain, in order: stem, arm, headline, bowl, leg. Each has
+    // its points, brush width, start and end time (s), easing, and the part of the K it may uncover
+    // (polygons, icon space). Keeping each stroke to its own part means no stroke shows little bits
+    // of its neighbours, so the edges stay clean while the K grows. The stem's part follows the
+    // stem's own straight edges exactly; parts that grow later overlap the earlier ones slightly so
+    // there are no hairline gaps between them.
     val GROW = listOf(
-        GrowStroke(floatArrayOf(1329.3f, 510.7f, 1340.0f, 506.7f, 1348.3f, 496.7f, 1351.0f, 480.0f, 1351.0f, 420.0f, 1351.0f, 365.0f), 33f, 0.8f, 1.45f, false),
-        GrowStroke(floatArrayOf(1363.3f, 413.3f, 1394.0f, 386.7f, 1426.0f, 358.7f), 28f, 1.45f, 1.85f, false),
-        GrowStroke(floatArrayOf(1370.7f, 340.0f, 1333.3f, 341.0f, 1300.0f, 340.7f, 1273.3f, 340.0f, 1265.0f, 336.0f, 1259.3f, 330.0f), 34f, 1.45f, 1.9f, false),
-        GrowStroke(floatArrayOf(1336.0f, 387.3f, 1321.4f, 389.7f, 1318.7f, 388.4f, 1315.9f, 387.3f, 1312.9f, 386.5f, 1309.9f, 386.1f, 1306.9f, 386.0f, 1303.9f, 386.3f, 1300.9f, 386.9f, 1298.0f, 387.8f, 1295.2f, 389.0f, 1292.6f, 390.6f, 1290.1f, 392.4f, 1287.7f, 394.5f, 1285.6f, 396.9f, 1283.8f, 399.5f, 1282.1f, 402.2f, 1280.8f, 405.2f, 1279.7f, 408.3f, 1279.0f, 411.5f, 1278.5f, 414.7f, 1278.3f, 418.0f, 1278.5f, 421.3f, 1279.0f, 424.5f, 1279.7f, 427.7f, 1280.8f, 430.8f, 1282.1f, 433.8f, 1283.8f, 436.5f, 1285.6f, 439.1f, 1287.7f, 441.5f, 1290.1f, 443.6f, 1292.6f, 445.4f, 1295.2f, 447.0f, 1298.0f, 448.2f, 1300.9f, 449.1f, 1303.9f, 449.7f, 1306.9f, 450.0f, 1309.9f, 449.9f, 1312.9f, 449.5f, 1315.9f, 448.7f, 1318.7f, 447.6f, 1321.4f, 446.3f, 1337.3f, 439.3f), 36f, 1.6f, 2.2f, true),
-        GrowStroke(floatArrayOf(1376.7f, 413.3f, 1391.7f, 431.7f, 1406.7f, 451.7f, 1421.7f, 473.3f, 1436.7f, 491.7f, 1451.7f, 504.0f, 1466.7f, 510.7f, 1483.3f, 510.0f, 1496.7f, 503.3f, 1507.3f, 492.0f), 40f, 1.65f, 2.25f, true),
+        GrowStroke(
+            floatArrayOf(1329.3f, 510.7f, 1340.0f, 506.7f, 1348.3f, 496.7f, 1351.0f, 480.0f, 1351.0f, 420.0f, 1351.0f, 365.0f),
+            40f, 0.8f, 1.45f, false,
+            listOf(floatArrayOf(1337.05f, 358f, 1366.8f, 358f, 1366.8f, 560f, 1250f, 560f, 1250f, 475f, 1337.05f, 475f)),
+        ),
+        GrowStroke(
+            floatArrayOf(1353.0f, 422.3f, 1363.3f, 413.3f, 1394.0f, 386.7f, 1426.0f, 358.7f),
+            36f, 1.45f, 1.85f, false,
+            listOf(floatArrayOf(1366f, 280f, 1530f, 280f, 1530f, 411f, 1390f, 411f, 1366f, 432f)),
+        ),
+        GrowStroke(
+            floatArrayOf(1370.7f, 340.0f, 1333.3f, 341.0f, 1300.0f, 340.7f, 1273.3f, 340.0f, 1265.0f, 336.0f, 1259.3f, 330.0f),
+            46f, 1.45f, 1.9f, false,
+            listOf(floatArrayOf(1250f, 280f, 1368f, 280f, 1368f, 360f, 1250f, 360f), floatArrayOf(1250f, 358f, 1338f, 358f, 1338f, 364f, 1250f, 364f)),
+        ),
+        GrowStroke(
+            floatArrayOf(1336.0f, 387.3f, 1321.4f, 389.7f, 1318.7f, 388.4f, 1315.9f, 387.3f, 1312.9f, 386.5f, 1309.9f, 386.1f, 1306.9f, 386.0f, 1303.9f, 386.3f, 1300.9f, 386.9f, 1298.0f, 387.8f, 1295.2f, 389.0f, 1292.6f, 390.6f, 1290.1f, 392.4f, 1287.7f, 394.5f, 1285.6f, 396.9f, 1283.8f, 399.5f, 1282.1f, 402.2f, 1280.8f, 405.2f, 1279.7f, 408.3f, 1279.0f, 411.5f, 1278.5f, 414.7f, 1278.3f, 418.0f, 1278.5f, 421.3f, 1279.0f, 424.5f, 1279.7f, 427.7f, 1280.8f, 430.8f, 1282.1f, 433.8f, 1283.8f, 436.5f, 1285.6f, 439.1f, 1287.7f, 441.5f, 1290.1f, 443.6f, 1292.6f, 445.4f, 1295.2f, 447.0f, 1298.0f, 448.2f, 1300.9f, 449.1f, 1303.9f, 449.7f, 1306.9f, 450.0f, 1309.9f, 449.9f, 1312.9f, 449.5f, 1315.9f, 448.7f, 1318.7f, 447.6f, 1321.4f, 446.3f, 1337.3f, 439.3f),
+            42f, 1.6f, 2.2f, true,
+            listOf(floatArrayOf(1250f, 362f, 1338.5f, 362f, 1338.5f, 477f, 1250f, 477f)),
+        ),
+        GrowStroke(
+            floatArrayOf(1376.7f, 413.3f, 1391.7f, 431.7f, 1406.7f, 451.7f, 1421.7f, 473.3f, 1436.7f, 491.7f, 1451.7f, 504.0f, 1466.7f, 510.7f, 1483.3f, 510.0f, 1496.7f, 503.3f, 1507.3f, 492.0f),
+            44f, 1.65f, 2.25f, true,
+            listOf(floatArrayOf(1366f, 430.4f, 1390f, 409.4f, 1530f, 409.4f, 1530f, 560f, 1366f, 560f)),
+        ),
     )
 }
 
-internal class GrowStroke(val points: FloatArray, val width: Float, val start: Float, val end: Float, val sine: Boolean)
+internal class GrowStroke(
+    val points: FloatArray,
+    val width: Float,
+    val start: Float,
+    val end: Float,
+    val sine: Boolean,
+    val region: List<FloatArray>,
+)
