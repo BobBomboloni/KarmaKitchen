@@ -147,7 +147,11 @@ class MainActivity : ComponentActivity() {
                 var showIntro by rememberSaveable { mutableStateOf(true) }
                 var startApp by remember { mutableStateOf(!showIntro) }
                 Box(Modifier.fillMaxSize()) {
-                    if (startApp) KarmaKitchenApp()
+                    if (startApp) {
+                        // Firebase sign-in and syncing start here too, not at launch, for the same reason.
+                        LaunchedEffect(Unit) { Cloud.start(applicationContext) }
+                        KarmaKitchenApp()
+                    }
                     AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
                         StartupAnimation(
                             onFinished = { startApp = true; showIntro = false },
