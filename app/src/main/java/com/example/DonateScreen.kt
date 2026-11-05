@@ -122,7 +122,8 @@ import com.example.cloud.CloudSync
 import com.example.cloud.DonationDoc
 import com.example.api.uriToBase64
 import com.example.ui.DonationChatbot
-import com.example.ui.ScannerAnimation
+import com.example.ui.FoodDepthScan
+import com.example.ui.rememberScanMap
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.DangerColor
 import com.example.ui.theme.DangerContainer
@@ -880,41 +881,15 @@ private fun AnalyzingCard(photo: Uri?) {
             index = (index + 1) % messages.size
         }
     }
-    Box(
+    val map = rememberScanMap(photo)
+    FoodDepthScan(
+        map = map,
+        message = messages[index],
         modifier = Modifier
             .fillMaxWidth()
             .height(300.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(SurfaceVariantColor)
-    ) {
-        if (photo != null) {
-            AsyncImage(
-                model = photo,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BackgroundColor.copy(alpha = 0.8f)),
-            contentAlignment = Alignment.Center
-        ) {
-            ScannerAnimation(modifier = Modifier.fillMaxSize())
-        }
-        Text(
-            text = messages[index] + "...",
-            style = MaterialTheme.typography.labelLarge,
-            color = TextPrimary,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(BackgroundColor.copy(alpha = 0.75f))
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-        )
-    }
+    )
 }
 
 /** Grey blocks in the shape of the result, shimmering while the AI is still looking at the photo. */
