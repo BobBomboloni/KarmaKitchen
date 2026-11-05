@@ -49,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -142,19 +141,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 // The startup animation plays over the app once per launch (not again on rotation),
-                // then fades away to show the first screen, which is already loaded underneath.
+                // then fades away to show the first screen. The app is only built underneath once
+                // the logo stands still (or the animation is skipped): building and loading it
+                // while the seed falls and the K grows made the animation stutter.
                 var showIntro by rememberSaveable { mutableStateOf(true) }
-                // While the animation covers the screen the app underneath is not drawn, so every
-                // frame goes to the animation. It is drawn again once the logo stands still.
-                var drawApp by remember { mutableStateOf(!showIntro) }
+                var startApp by remember { mutableStateOf(!showIntro) }
                 Box(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize().drawWithContent { if (drawApp) drawContent() }) {
-                        KarmaKitchenApp()
-                    }
+                    if (startApp) KarmaKitchenApp()
                     AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
                         StartupAnimation(
-                            onFinished = { drawApp = true; showIntro = false },
-                            onResting = { drawApp = true },
+                            onFinished = { startApp = true; showIntro = false },
+                            onResting = { startApp = true },
                         )
                     }
                 }

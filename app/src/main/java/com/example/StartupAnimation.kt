@@ -79,7 +79,7 @@ private const val REST_SECONDS = 4.75f
  *
  * It is drawn with Compose (no video), so it is sharp on every screen and follows dark mode. A tap
  * skips it. [onResting] is called once the wordmark has formed and stands still (the app can get
- * itself ready to show then), [onFinished] at the end. [frozenAt] draws one moment (in seconds)
+ * itself ready to show then, without a visible hitch), [onFinished] at the end. [frozenAt] draws one moment (in seconds)
  * without running, for previews and tests.
  */
 @Composable
