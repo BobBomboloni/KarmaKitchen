@@ -54,7 +54,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,6 +113,8 @@ import com.example.ui.theme.readableInk
 import com.example.ui.theme.SecondaryAmber
 import com.example.ui.theme.SurfaceColor
 import com.example.ui.theme.SurfaceHighColor
+import com.example.ui.FoodDepthScan
+import com.example.ui.rememberScanMap
 import com.example.ui.theme.SurfaceVariantColor
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -714,6 +715,7 @@ fun NgoOffersScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     var targetId by remember { mutableStateOf<String?>(null) }
     var analyzing by remember { mutableStateOf(false) }
+    var intakePhoto by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var summary by remember { mutableStateOf<IntakeSummary?>(null) }
     var aiFailed by remember { mutableStateOf(false) }
 
@@ -724,6 +726,7 @@ fun NgoOffersScreen(navController: NavController) {
         if (bitmap == null) {
             targetId = null
         } else {
+            intakePhoto = bitmap
             analyzing = true
             scope.launch {
                 try {
@@ -858,11 +861,14 @@ fun NgoOffersScreen(navController: NavController) {
             onDismissRequest = {},
             title = { Text("Checking the food") },
             text = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
-                    Spacer(Modifier.width(16.dp))
-                    Text("Checking how fresh it is", color = TextSecondary)
-                }
+                FoodDepthScan(
+                    map = rememberScanMap(intakePhoto),
+                    message = "Checking how fresh it is",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                )
             },
             confirmButton = {},
             containerColor = SurfaceHighColor,
