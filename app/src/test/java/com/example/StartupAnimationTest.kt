@@ -30,7 +30,7 @@ class StartupAnimationTest {
         rule.setContent {
             MyApplicationTheme(darkTheme = dark) { StartupAnimation(onFinished = {}, frozenAt = time.floatValue) }
         }
-        listOf(0.5f, 0.75f, 1.2f, 1.7f, 2.1f, 2.6f, 3.25f, 3.5f, 3.8f, 4.2f, 5f).forEach { t ->
+        listOf(0.5f, 0.75f, 1f, 1.2f, 1.35f, 1.5f, 1.7f, 1.9f, 2.1f, 2.6f, 3.25f, 3.5f, 3.8f, 4.2f, 5f).forEach { t ->
             time.floatValue = t
             rule.waitForIdle()
             val name = "intro_${if (dark) "dark" else "light"}_${(t * 100).toInt().toString().padStart(3, '0')}"
