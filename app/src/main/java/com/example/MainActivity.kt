@@ -136,12 +136,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 // The startup animation plays over the app once per launch (not again on rotation),
-                // then fades away to show the first screen, which is already loaded underneath.
+                // then fades away to show the first screen. The app is only built underneath once
+                // the logo stands still (or the animation is skipped): building and loading it
+                // while the seed falls and the K grows made the animation stutter.
                 var showIntro by rememberSaveable { mutableStateOf(true) }
+                var startApp by remember { mutableStateOf(!showIntro) }
                 Box(Modifier.fillMaxSize()) {
-                    KarmaKitchenApp()
+                    if (startApp) KarmaKitchenApp()
                     AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
-                        StartupAnimation(onFinished = { showIntro = false })
+                        StartupAnimation(
+                            onFinished = { startApp = true; showIntro = false },
+                            onResting = { startApp = true },
+                        )
                     }
                 }
             }
