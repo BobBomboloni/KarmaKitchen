@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -105,6 +106,9 @@ fun StartupAnimation(
                     GrowArt.makeOrNull(pxPerUnit)
                 }
             }
+            // Right after launch the phone is still busy starting the app, which made the seed's
+            // fall stutter now and then. Hold the plain maroon until frames come steadily.
+            awaitSteadyFrames()
             clock.animateTo(REST_SECONDS, tween((REST_SECONDS * 1000).toInt(), easing = LinearEasing))
             rest()
             clock.animateTo(INTRO_SECONDS, tween(((INTRO_SECONDS - REST_SECONDS) * 1000).toInt(), easing = LinearEasing))
@@ -124,6 +128,21 @@ fun StartupAnimation(
             .pointerInput(Unit) { detectTapGestures { finish() } }
     ) {
         drawIntro(frozenAt ?: clock.value, art, endBackground, karma, kitchen)
+    }
+}
+
+/**
+ * Waits until [steadyFrames] frames in a row arrive less than [lateMillis] apart (no big pauses
+ * from the phone still starting the app), or at most [maxMillis].
+ */
+private suspend fun awaitSteadyFrames(steadyFrames: Int = 8, lateMillis: Long = 34, maxMillis: Long = 700) {
+    val start = withFrameNanos { it }
+    var last = start
+    var steady = 0
+    while (steady < steadyFrames && last - start < maxMillis * 1_000_000L) {
+        val now = withFrameNanos { it }
+        steady = if (now - last < lateMillis * 1_000_000L) steady + 1 else 0
+        last = now
     }
 }
 
