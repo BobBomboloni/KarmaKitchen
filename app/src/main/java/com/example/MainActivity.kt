@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -143,10 +144,18 @@ class MainActivity : ComponentActivity() {
                 // The startup animation plays over the app once per launch (not again on rotation),
                 // then fades away to show the first screen, which is already loaded underneath.
                 var showIntro by rememberSaveable { mutableStateOf(true) }
+                // While the animation covers the screen the app underneath is not drawn, so every
+                // frame goes to the animation. It is drawn again once the logo stands still.
+                var drawApp by remember { mutableStateOf(!showIntro) }
                 Box(Modifier.fillMaxSize()) {
-                    KarmaKitchenApp()
+                    Box(Modifier.fillMaxSize().drawWithContent { if (drawApp) drawContent() }) {
+                        KarmaKitchenApp()
+                    }
                     AnimatedVisibility(visible = showIntro, enter = EnterTransition.None, exit = fadeOut(tween(400))) {
-                        StartupAnimation(onFinished = { showIntro = false })
+                        StartupAnimation(
+                            onFinished = { drawApp = true; showIntro = false },
+                            onResting = { drawApp = true },
+                        )
                     }
                 }
             }

@@ -1,5 +1,14 @@
 package com.example
 
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
+import android.graphics.Shader
+import android.graphics.Canvas as AndroidCanvas
+import android.graphics.Matrix as AndroidMatrix
+import android.graphics.Paint as AndroidPaint
+import android.graphics.Path as AndroidPath
+import android.graphics.PathMeasure as AndroidPathMeasure
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -11,21 +20,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawTransform
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -35,13 +44,18 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.core.view.WindowCompat
 import com.example.ui.theme.LocalPalette
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
@@ -52,6 +66,9 @@ import kotlin.math.pow
 /** How long the startup animation runs, in seconds. */
 const val INTRO_SECONDS = 5f
 
+/** From this moment the full wordmark stands still until the end. */
+private const val REST_SECONDS = 4.75f
+
 /**
  * The startup animation, "Seed of karma":
  *  1. On maroon, one grain of food falls and lands with a soft ring.
@@ -61,15 +78,36 @@ const val INTRO_SECONDS = 5f
  *     place, the headline runs across, "arma" drops from it and "Kitchen" rises.
  *
  * It is drawn with Compose (no video), so it is sharp on every screen and follows dark mode. A tap
- * skips it. [frozenAt] draws one moment (in seconds) without running, for previews and tests.
+ * skips it. [onResting] is called once the wordmark has formed and stands still (the app can get
+ * itself ready to show then), [onFinished] at the end. [frozenAt] draws one moment (in seconds)
+ * without running, for previews and tests.
  */
 @Composable
-fun StartupAnimation(onFinished: () -> Unit, modifier: Modifier = Modifier, frozenAt: Float? = null) {
+fun StartupAnimation(
+    onFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+    onResting: () -> Unit = {},
+    frozenAt: Float? = null,
+) {
     val finish by rememberUpdatedState(onFinished)
+    val rest by rememberUpdatedState(onResting)
     val clock = remember { Animatable(0f) }
+    val pxPerUnit = growArtScale(LocalConfiguration.current, LocalDensity.current.density)
+    // Previews and tests draw single frames, so they get the pictures straight away.
+    var art by remember { mutableStateOf(if (frozenAt != null) GrowArt.makeOrNull(pxPerUnit) else null) }
     LaunchedEffect(frozenAt) {
         if (frozenAt == null) {
-            clock.animateTo(INTRO_SECONDS, tween((INTRO_SECONDS * 1000).toInt(), easing = LinearEasing))
+            // Get every logo shape and picture ready before the clock starts (a moment of plain
+            // maroon), so no frame of the animation has to wait for them.
+            if (art == null) {
+                art = withContext(Dispatchers.Default) {
+                    Intro.warmUp()
+                    GrowArt.makeOrNull(pxPerUnit)
+                }
+            }
+            clock.animateTo(REST_SECONDS, tween((REST_SECONDS * 1000).toInt(), easing = LinearEasing))
+            rest()
+            clock.animateTo(INTRO_SECONDS, tween(((INTRO_SECONDS - REST_SECONDS) * 1000).toInt(), easing = LinearEasing))
             finish()
         }
     }
@@ -85,7 +123,7 @@ fun StartupAnimation(onFinished: () -> Unit, modifier: Modifier = Modifier, froz
             .semantics { contentDescription = "KarmaKitchen" }
             .pointerInput(Unit) { detectTapGestures { finish() } }
     ) {
-        drawIntro(frozenAt ?: clock.value, endBackground, karma, kitchen)
+        drawIntro(frozenAt ?: clock.value, art, endBackground, karma, kitchen)
     }
 }
 
@@ -134,10 +172,12 @@ private fun easeSine(x: Float) = (0.5f - 0.5f * cos(PI * x)).toFloat()
 // Drawing
 
 private object Intro {
-    val growPaths: List<Path> by lazy { BrandArt.GROW.map { BrandPaths.polyline(it.points) } }
-    val growLengths: List<Float> by lazy {
-        growPaths.map { p -> PathMeasure().apply { setPath(p, false) }.length }
+    // The pen strokes' paths, measured once. Only used on the main thread while drawing.
+    val growMeasures: List<AndroidPathMeasure> by lazy {
+        BrandArt.GROW.map { AndroidPathMeasure(BrandPaths.polyline(it.points).asAndroidPath(), false) }
     }
+    // Reused for every stroke on every frame, so drawing makes no garbage.
+    val growSegment = AndroidPath()
     // The part of the K each stroke may uncover (see BrandArt.GROW).
     val growRegions: List<Path> by lazy {
         BrandArt.GROW.map { stroke -> Path().apply { stroke.region.forEach { addPath(BrandPaths.polygon(it)) } } }
@@ -147,9 +187,86 @@ private object Intro {
     }
     // A layer around the icon K (icon coordinates), big enough for the brush strokes.
     val kBounds = Rect(1150f, 200f, 1650f, 650f)
+
+    /** Parses every logo path now, so that no frame of the animation has to stop for it. */
+    fun warmUp() {
+        BrandPaths.iconK; BrandPaths.bodyRegion; BrandPaths.leafRegion
+        BrandPaths.wordmarkK; BrandPaths.arma; BrandPaths.kitchen
+        growMeasures; growRegions; kLocal
+    }
 }
 
-private fun DrawScope.drawIntro(t: Float, endBackground: Color, karma: Color, kitchen: Color) {
+/**
+ * How many pixels per icon unit the [GrowArt] pictures need: as sharp as the K is drawn while it
+ * grows (the camera is zoomed in twice then), with a cap so the pictures stay a few MB at most.
+ */
+@Composable
+private fun growArtScale(config: Configuration, density: Float): Float = remember(config, density) {
+    val shortSide = min(config.screenWidthDp, config.screenHeightDp) * density
+    (2f * shortSide * 0.46f / 244f).coerceIn(1f, 4.5f)
+}
+
+/**
+ * Each part of the K painted once, before the animation starts, into its own picture. The growing
+ * pen strokes are drawn with these pictures as their paint, so each stroke shows exactly its own
+ * part of the K. This replaces offscreen layers and cut-outs that had to be worked out again on
+ * every frame, which made the animation stutter on phones.
+ */
+private class GrowArt private constructor(val paints: List<AndroidPaint>) {
+    companion object {
+        fun makeOrNull(pxPerUnit: Float): GrowArt? =
+            runCatching { make(pxPerUnit) }.getOrNull()
+
+        private fun make(pxPerUnit: Float): GrowArt {
+            val body = BrandPaths.bodyRegion.asAndroidPath()
+            val k = BrandPaths.iconK.asAndroidPath()
+            val fill = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply { color = LogoCream.toArgb() }
+            val paints = BrandArt.GROW.mapIndexed { i, stroke ->
+                // The picture covers the stroke's part, within the K, plus a clear 2-unit edge.
+                var left = Float.MAX_VALUE; var top = Float.MAX_VALUE
+                var right = -Float.MAX_VALUE; var bottom = -Float.MAX_VALUE
+                stroke.region.forEach { xy ->
+                    for (j in xy.indices step 2) {
+                        left = min(left, xy[j]); right = max(right, xy[j])
+                        top = min(top, xy[j + 1]); bottom = max(bottom, xy[j + 1])
+                    }
+                }
+                left = max(left, BrandArt.ICON_LEFT) - 2f
+                top = max(top, BrandArt.ICON_TOP) - 2f
+                right = min(right, BrandArt.ICON_RIGHT) + 2f
+                bottom = min(bottom, BrandArt.ICON_BOTTOM) + 2f
+                val bitmap = Bitmap.createBitmap(
+                    ceil((right - left) * pxPerUnit).toInt(),
+                    ceil((bottom - top) * pxPerUnit).toInt(),
+                    Bitmap.Config.ARGB_8888,
+                )
+                AndroidCanvas(bitmap).apply {
+                    scale(pxPerUnit, pxPerUnit)
+                    translate(-left, -top)
+                    clipPath(body)
+                    clipPath(Intro.growRegions[i].asAndroidPath())
+                    drawPath(k, fill)
+                }
+                bitmap.prepareToDraw() // start sending it to the graphics chip now
+                AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG or AndroidPaint.FILTER_BITMAP_FLAG).apply {
+                    style = AndroidPaint.Style.STROKE
+                    strokeWidth = stroke.width
+                    strokeCap = AndroidPaint.Cap.ROUND
+                    strokeJoin = AndroidPaint.Join.ROUND
+                    shader = BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+                        setLocalMatrix(AndroidMatrix().apply {
+                            setScale(1f / pxPerUnit, 1f / pxPerUnit)
+                            postTranslate(left, top)
+                        })
+                    }
+                }
+            }
+            return GrowArt(paints)
+        }
+    }
+}
+
+private fun DrawScope.drawIntro(t: Float, art: GrowArt?, endBackground: Color, karma: Color, kitchen: Color) {
     val w = size.width
     val h = size.height
 
@@ -208,7 +325,7 @@ private fun DrawScope.drawIntro(t: Float, endBackground: Color, karma: Color, ki
     if (ripple < rippleMax) {
         drawRect(LogoMaroon)
         withTransform(kTransform) {
-            drawGrowingK(t, LogoCream)
+            drawGrowingK(t, art)
             if (leafScale > 0.001f) {
                 val base = Offset(BrandArt.LEAF_BASE[0], BrandArt.LEAF_BASE[1])
                 withTransform({
@@ -279,50 +396,39 @@ private inline fun DrawScope.layer(bounds: Rect, alpha: Float, block: DrawScope.
     drawIntoCanvas { it.restore() }
 }
 
-/** The body of the icon K, revealed by pen strokes that grow out of the grain. */
-private fun DrawScope.drawGrowingK(t: Float, color: Color) {
+/**
+ * The body of the icon K (always cream), revealed by pen strokes that grow out of the grain. Each
+ * stroke paints with the picture of its own part of the K (see [GrowArt]), so a wide brush never
+ * uncovers stray bits of the parts next to it.
+ */
+private fun DrawScope.drawGrowingK(t: Float, art: GrowArt?) {
     val settle = phase(t, 2.2f, 2.4f)
     if (settle >= 1f) {
-        clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, color) }
+        clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, LogoCream) }
         return
     }
     val strokes = BrandArt.GROW
     if (strokes.none { t > it.start }) return
-    drawIntoCanvas { canvas ->
-        canvas.saveLayer(Intro.kBounds, Paint())
+    if (art == null) {
+        // The pictures could not be made: let the K fade in instead of growing.
+        val fade = phase(t, strokes.first().start, 2.4f)
+        clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, LogoCream, alpha = fade) }
+        return
     }
-    clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, color) }
-    // Keep the K only where the strokes have reached: the strokes go into a layer that is
-    // blended with DstIn, so everything outside them is cleared. Each stroke is kept to its own
-    // part of the K, so a wide brush never uncovers stray bits of the parts next to it.
     drawIntoCanvas { canvas ->
-        canvas.saveLayer(Intro.kBounds, Paint().apply { blendMode = BlendMode.DstIn })
+        val native = canvas.nativeCanvas
+        val segment = Intro.growSegment
         strokes.forEachIndexed { i, stroke ->
             val raw = phase(t, stroke.start, stroke.end)
             val p = if (stroke.sine) easeSine(raw) else easeOut(raw)
             if (p <= 0f) return@forEachIndexed
-            val segment = Path()
-            PathMeasure().apply {
-                setPath(Intro.growPaths[i], false)
-                getSegment(0f, Intro.growLengths[i] * p, segment, true)
-            }
-            val paint = Paint().apply {
-                this.color = Color.White
-                style = PaintingStyle.Stroke
-                strokeWidth = stroke.width
-                strokeCap = StrokeCap.Round
-                strokeJoin = StrokeJoin.Round
-                isAntiAlias = true
-            }
-            canvas.save()
-            canvas.clipPath(Intro.growRegions[i])
-            canvas.drawPath(segment, paint)
-            canvas.restore()
+            val measure = Intro.growMeasures[i]
+            segment.rewind()
+            measure.getSegment(0f, measure.length * p, segment, true)
+            native.drawPath(segment, art.paints[i])
         }
-        canvas.restore()
-        canvas.restore()
     }
-    if (settle > 0f) clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, color, alpha = settle) }
+    if (settle > 0f) clipPath(BrandPaths.bodyRegion) { drawPath(BrandPaths.iconK, LogoCream, alpha = settle) }
 }
 
 /** The grain of food: falls, lands with a squash and a soft ring, then becomes the K's foot. */
