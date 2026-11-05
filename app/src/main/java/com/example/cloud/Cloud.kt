@@ -23,6 +23,18 @@ object Cloud {
         FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProviderFactory())
         enabled = true
         CloudSync.init(context)
+    }
+
+    private var started = false
+
+    /**
+     * Starts signing in and syncing (who is signed in, then their donations, offers and smiles).
+     * MainActivity calls this once the startup animation's logo has formed: starting at launch put
+     * this work on the main thread right while the seed fell and the K grew, so it stuttered.
+     */
+    fun start(context: Context) {
+        if (!enabled || started) return
+        started = true
         Account.start(context.applicationContext)
     }
 }
