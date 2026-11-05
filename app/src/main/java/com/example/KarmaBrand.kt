@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -62,15 +62,22 @@ internal object BrandPaths {
 
 /** A gentle back-and-forth for the leaf, in degrees. */
 @Composable
-internal fun rememberLeafSway(amplitude: Float = 4f, periodMs: Int = 2600): Float {
+internal fun rememberLeafSway(amplitude: Float = 4f, periodMs: Int = 2600): Float =
+    rememberLeafSwayState(amplitude, periodMs).value
+
+/**
+ * The same sway, to be read while drawing (not while building the screen), so that only the logo
+ * is redrawn on each frame and the screen around it is left alone.
+ */
+@Composable
+internal fun rememberLeafSwayState(amplitude: Float = 4f, periodMs: Int = 2600): State<Float> {
     val loop = rememberInfiniteTransition(label = "leaf")
-    val sway by loop.animateFloat(
+    return loop.animateFloat(
         initialValue = -amplitude,
         targetValue = amplitude,
         animationSpec = infiniteRepeatable(tween(periodMs, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "sway"
     )
-    return sway
 }
 
 /**
@@ -86,7 +93,7 @@ fun KarmaKitchenWordmark(
     kitchenColor: Color = LocalPalette.current.wordmarkKitchen,
     swayLeaf: Boolean = false,
 ) {
-    val sway = if (swayLeaf) rememberLeafSway(amplitude = 3f) else 0f
+    val sway = if (swayLeaf) rememberLeafSwayState(amplitude = 3f) else null
     val aspect = (BrandArt.WM_RIGHT - BrandArt.WM_LEFT) / (BrandArt.WM_BOTTOM - BrandArt.WM_TOP)
     Canvas(
         modifier
@@ -99,7 +106,7 @@ fun KarmaKitchenWordmark(
             scale(s, s, pivot = Offset.Zero)
             translate(-BrandArt.WM_LEFT, -BrandArt.WM_TOP)
         }) {
-            drawWordmark(karmaColor, kitchenColor, sway)
+            drawWordmark(karmaColor, kitchenColor, sway?.value ?: 0f)
         }
     }
 }
